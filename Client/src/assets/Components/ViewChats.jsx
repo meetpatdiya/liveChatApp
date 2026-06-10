@@ -1,0 +1,165 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
+import api from "../ApiServices/Api";
+import { io } from "socket.io-client";
+
+const ViewChats = () => {
+  const [groupInfo, setgroupInfo] = useState({});
+  const [chats, setchats] = useState([]);
+  const [userInfo, setUserInfo] = useState({});
+  const [inpt, setinpt] = useState("");
+  const { id } = useParams();
+  const userId = Number(localStorage.getItem("userId"));
+  const socket = useRef(null);
+  useEffect(() => {
+    socket.current = io("http://localhost:3000", {
+      auth: {
+        userId: localStorage.getItem("userId"),
+      },
+    });
+
+    return () => socket.current.disconnect();
+  }, []);
+
+  const getMessages = async () => {
+    try {
+      const { data } = await api.post("/chat/getmessages", { id: id });
+       console.log(data);
+      if (data.messages != null) {
+        setchats(data?.messages);
+      } else {
+        setchats([]);
+      }
+      setgroupInfo(data?.grpinfo[0]);
+      setUserInfo(data?.lsnSeen[0]);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getMessages();
+  }, [id]);
+
+  useEffect(() => {
+    if (!socket.current) return;
+    const handleMessage = (msg) => {
+      if (msg.conversation_id == id) {
+        setchats((prev) => [...prev, msg]);
+      }
+    };
+
+    socket.current.on("newMessage", handleMessage);
+
+    return () => {
+      socket.current.off("newMessage", handleMessage);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!socket.current) return;
+
+    const handleOnline = (onlineUserId) => {
+      if (onlineUserId == userInfo?.id) {
+        setUserInfo((prev) => ({
+          ...prev,
+          is_online: 1,
+        }));
+      }
+    };
+
+    const handleOffline = ({ userId, lastSeen }) => {
+      if (userId == userInfo?.id) {
+        setUserInfo((prev) => ({
+          ...prev,
+          is_online: 0,
+          last_seen: lastSeen,
+        }));
+      }
+    };
+    socket.current.on("userOnline", handleOnline);
+    socket.current.on("userOffline", handleOffline);
+
+    return () => {
+      socket.current.off("userOnline", handleOnline);
+      socket.current.off("userOffline", handleOffline);
+    };
+  }, [userInfo?.id]);
+
+  const handleSendMessage = async () => {
+    try {
+      if (inpt.trim() != "") {
+        await api.post("/chat/sendmessage", {
+          cnv_id: id,
+          snd_id: userId,
+          msg: inpt,
+          msg_type: "text",
+        });
+      }
+    } catch (error) {
+      console.log(error?.response);
+    }
+    setinpt("");
+    getMessages();
+  };
+
+  return (
+    <div>
+      <h1>{userInfo?.is_online ? "online": new Date(userInfo?.last_seen).toLocaleString()}</h1>
+      <div>
+        {groupInfo?.group_name}
+        <img src={groupInfo?.group_avatar} alt="" height={200} />
+      </div>
+      <div>
+        <h2>chats</h2>
+        <div>
+          <div>
+            {chats.length > 0 &&
+              chats.map((item, index) => {
+                const isSender = item.sender_id == userId;
+
+                const currentDate = new Date(
+                  item.created_at
+                ).toLocaleDateString();
+
+                const previousDate =
+                  index > 0
+                    ? new Date(
+                        chats[index - 1].created_at
+                      ).toLocaleDateString()
+                    : null;
+
+                const showDateBadge = currentDate !== previousDate;
+
+                const time = new Date(item.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                return (
+                  <div key={index}>
+                    {showDateBadge && <div>{currentDate}</div>}
+
+                    <div style={{ color: isSender ? "green" : "red" }}>
+                      <div>{item.message}</div>
+                      <small>{time}</small>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        <input
+          type="text"
+          value={inpt}
+          onChange={(e) => setinpt(e.target.value)}
+        />
+
+        <button onClick={handleSendMessage}>Send</button>
+      </div>
+    </div>
+  );
+};
+
+export default ViewChats;
