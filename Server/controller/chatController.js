@@ -6,6 +6,7 @@ import {
   insertMessInfo,
   getLastSeen
 } from "../models/chatmodel.js";
+
 export const getGroups = async (req, res) => {
   const id = req.user.id;
   try {
@@ -19,6 +20,7 @@ export const getGroups = async (req, res) => {
     return res.status(500).json({ message: "server errror" });
   }
 };
+
 export const getMessage = async (req, res) => {
   const { id } = req.body;
   const userId = req.user.id
@@ -26,8 +28,9 @@ export const getMessage = async (req, res) => {
     const messages = await getMessages(id);
     const grpinfo = await getGroupInfo(id);
     const lsnSeen = await getLastSeen(id,userId);
+    console.log(messages);
     if (messages.length == 0) {
-      return res.status(200).json({messag:"start chatting" });
+      return res.status(200).json({messag:"start chatting",grpinfo });
     }
     return res.status(200).json({ messages, grpinfo,lsnSeen });
   } catch (error) {
@@ -35,6 +38,7 @@ export const getMessage = async (req, res) => {
     return res.status(500).json({ message: "server errror" });
   }  
 };
+
 export const sendMessageto = async (req, res) => {
   const { cnv_id, snd_id, msg, msg_type } = req.body;
   if (!cnv_id || !snd_id || !msg || !msg_type)

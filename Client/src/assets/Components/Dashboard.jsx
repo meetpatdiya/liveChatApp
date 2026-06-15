@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import api from "../ApiServices/Api.js";
 import { useNavigate, Outlet } from "react-router-dom";
+import CreateGroup from "./CreateGroup.jsx";
 import { io } from "socket.io-client";
 const Dashboard = () => {
   const [data, setdata] = useState(null);
@@ -18,8 +19,8 @@ const Dashboard = () => {
   const handleLogout = async ()=>{
     try {
       const {data} = await api.post("/auth/logout")
-      console.log(data);
       localStorage.removeItem("userId");
+      navigate("/")
     } catch (error) {
       console.log(error);
     }
@@ -57,7 +58,8 @@ const Dashboard = () => {
   return (
     <>
       <div>
-        <h1>Welcome to This Encrypted App</h1>
+        <h1>Welcome to This Encrypted App  <button onClick={handleLogout}>Logout</button> </h1>
+        <CreateGroup/>
         <input
           type="text"
           value={search}
@@ -70,11 +72,8 @@ const Dashboard = () => {
         {output.searchResult && (
           <>
             {output.searchResult.map((item, index) => (
-              <div>
-                {item.id}
-                
-                {item.username}
-                {item.email}
+              <div>                
+                <p>Name: {item.username}</p>
                 <img src={item.avatar} alt="User's Avatar" height={200} />
                 {item.hasConversation != 1 ? (
                   <button onClick={() => handleStartChatting(item.id)}>
@@ -106,10 +105,8 @@ const Dashboard = () => {
           );
         })}
       </div>
-            <button onClick={handleLogout}>Logout</button>
-
       <Suspense fallback={<p>Loading</p>}>
-        <Outlet />
+        <Outlet />  
       </Suspense>
     </>
   );
