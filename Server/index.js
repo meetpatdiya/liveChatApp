@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import createRoutes from "./routes/createRoutes.js";
+import userRoutes from "./routes/userRoutes.js"
 import cookieParser from "cookie-parser";
 import isauth from "./middleware/isauth.js";
 const app = express();
@@ -51,6 +52,7 @@ app.use("/auth", authRoutes);
 app.use("/chat", isauth, chatRoutes);
 app.use("/search", isauth, searchRoutes);
 app.use("/create", isauth, createRoutes);
+app.use("/user", isauth, userRoutes);
 server.listen(3000, () => {
   console.log("Server Running");
 });

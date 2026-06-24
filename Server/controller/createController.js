@@ -49,7 +49,7 @@ export const insertGroup = async (req, res) => {
 export const insertGroupMembers = async (req, res) => {
   const { grp_id, mem_id } = req.body;
   try {
-    const addMember = await addMembers(insertId, user_id);
+    const addMember = await addMembers(grp_id, mem_id);
   } catch (error) {
     console.log(error);
     return res.status(400).json({ message: "Error occured" });

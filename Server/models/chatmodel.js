@@ -73,9 +73,12 @@ export const insertMessInfo = async (msg_id, status, cnv_id, snd_id) => {
     return true;
   } catch (error) {
     console.log(error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-    });
+    return false;
   }
 };
 
+export const updateGroup = async (grp_id,grp_avatar,grp_name) => {
+  const q ="UPDATE conversations SET group_avatar = ?,group_name = ? WHERE id = ? ";
+  const [data] = await db.promise().query(q, [grp_avatar, grp_name,grp_id]);
+  return data;
+};

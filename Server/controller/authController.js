@@ -1,4 +1,4 @@
-import { CreateUser, CheckUser } from "../models/userModel.js";
+import { CreateUser, CheckUser } from "../models/authModel.js";
 import bcrypt from "bcrypt";
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const register = async (req, res) => {

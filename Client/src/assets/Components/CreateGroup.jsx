@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../ApiServices/Api";
 const CreateGroup = () => {
   const [name, setName] = useState("");
+  const [create, setCreate] = useState(false)
   const [privacy, setPrivacy] = useState("");
   const [nameError, setNameError] = useState("");
   const [privacyError, setPrivacyError] = useState("");
@@ -29,7 +30,9 @@ const CreateGroup = () => {
     }
   };
   return (
-    <form method="POST" noValidate onSubmit={(e)=>handleSubmit(e)}>
+    <>
+    <button onClick={()=>setCreate(p=>!p)}>Create a Group</button>
+   { create ? <form method="POST" noValidate onSubmit={(e)=>handleSubmit(e)}>
       Enter Name of the Group:
       <input
         type="text"
@@ -44,8 +47,9 @@ const CreateGroup = () => {
         <option value="private">PRIVATE</option>
         <option value="public">PUBLIC</option>
       </select>
-      <button type="submit">Create Group</button>
-    </form>
+      <button type="submit">Create</button>
+    </form> :null}
+    </>
   );
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import api from "../ApiServices/Api";
 import { io } from "socket.io-client";
+import UpdateGroup from "./UpdateGroup";
 
 const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
@@ -10,6 +11,7 @@ const ViewChats = () => {
   const [inpt, setinpt] = useState("");
   const [addUserInpt, setaddUserInpt] = useState("");
   const [addData, setaddData] = useState([]);
+  const [file, setFile] = useState(null);
   const { id } = useParams();
   const userId = Number(localStorage.getItem("userId"));
   const socket = useRef(null);
@@ -26,6 +28,8 @@ const ViewChats = () => {
     try {
       const { data } = await api.post("/chat/getmessages", { id: id });
       if (data.messages != null) {
+        console.log(data.messages);
+
         setchats(data?.messages);
       } else {
         setchats([]);
@@ -54,18 +58,47 @@ const ViewChats = () => {
       console.log(error.response);
     }
   };
-
-useEffect(() => {
-  const timer = setTimeout(() => {
-    if (addUserInpt.trim().length >= 2) {
-      getSearchedData();
-    } else {
-      setaddData([]);
+  const handleFile = async (e) => {
+    const selectedFile = e.target.files[0];
+    const formData = new FormData();
+    const fileType = selectedFile.type.startsWith("image/") ? "image" : "file";
+    formData.append("imgchat", selectedFile);
+    formData.append("cnv_id", id);
+    formData.append("snd_id", userId);
+    formData.append("msg_type", fileType);
+    console.log(selectedFile);
+    try {
+      const data = await api.post("/chat/sendimages", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log(data);
+    } catch (err) {
+      console.log(err);
     }
-  }, 500);
+  };
 
-  return () => clearTimeout(timer);
-}, [addUserInpt]);
+  const addToGroup = async (userId) => {
+    try {
+      const { data } = await api.post("/create/insertgrpmembers", {
+        grp_id: id,
+        mem_id: userId,
+      });
+      console.log(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (addUserInpt.trim().length >= 2) {
+        getSearchedData();
+      } else {
+        setaddData([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [addUserInpt]);
 
   useEffect(() => {
     if (!socket.current) return;
@@ -112,21 +145,21 @@ useEffect(() => {
     };
   }, [userInfo?.id]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (message, msg_type) => {
     try {
-      if (inpt.trim() != "") {
+      if (message.trim() !== "") {
         await api.post("/chat/sendmessage", {
           cnv_id: id,
           snd_id: userId,
-          msg: inpt,
-          msg_type: "text",
+          msg: message,
+          msg_type: msg_type,
         });
+        setinpt("");
+        getMessages();
       }
     } catch (error) {
       console.log(error?.response);
     }
-    setinpt("");
-    getMessages();
   };
 
   return (
@@ -147,7 +180,8 @@ useEffect(() => {
             {chats.length > 0 &&
               chats.map((item, index) => {
                 const isSender = item.sender_id == userId;
-
+                const fileIndex = item.message.indexOf("/chatFiles/")
+                const fileName =item.message.substring(fileIndex+11)
                 const currentDate = new Date(
                   item.created_at,
                 ).toLocaleDateString();
@@ -167,9 +201,16 @@ useEffect(() => {
                 return (
                   <div key={index}>
                     {showDateBadge && <div>{currentDate}</div>}
-
                     <div style={{ color: isSender ? "green" : "red" }}>
-                      <div>{item.message}</div>
+                      {item.message_type == "text" ? (
+                        <div>{item.message}</div>
+                      ) : item.message_type == "file" ?
+                       (
+                        <a href={item.message} target="_blank">{fileName}</a>
+                      ) : (
+                        <img src={item.message} width={200} />
+                      )}
+
                       <small>{time}</small>
                     </div>
                   </div>
@@ -177,30 +218,57 @@ useEffect(() => {
               })}
           </div>
         </div>
-
+        <label htmlFor="file-upload">📎</label>
+        <input
+          id="file-upload"
+          type="file"
+          accept="image/*,.pdf,.doc,.docx"
+          hidden
+          onChange={handleFile}
+        />
         <input
           type="text"
           value={inpt}
           onChange={(e) => setinpt(e.target.value)}
         />
-        <button onClick={handleSendMessage}>Send</button>
+        <button onClick={() => handleSendMessage(inpt, "text")}>Send</button>
         {isGroup && isAdmin && isPrivate && (
           <div>
-            Hello admin you can add members;
+            Hello admin you can add members
             <input
               type="text"
               className="border"
               value={addUserInpt}
               onChange={(e) => setaddUserInpt(e.target.value)}
             />
-            {addData.length > 0 && addData.map((item)=>(
-              <div key={item.id}>
-                <img src={item.avatar} alt={item.name}  className="h-20 rounded-3xl"  />
-                <p>Name: {item.name}</p>
-                <p>Email: {item.email}</p>
-               {item.has_connection ? <p>User Already Exists</p>:<button>Add to group</button>}
-              </div>
-            ))}
+            {addData.length > 0 &&
+              addData.map((item) => (
+                <div key={item.id}>
+                  <img
+                    src={item.avatar}
+                    alt={item.name}
+                    className="h-20 rounded-3xl"
+                  />
+                  <p>Name: {item.name}</p>
+                  <p>Email: {item.email}</p>
+                  {item.has_connection ? (
+                    <p>User Already in the group</p>
+                  ) : (
+                    <button
+                      className="border "
+                      onClick={() => addToGroup(item.id)}
+                    >
+                      Add to group
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+        {isGroup && isAdmin && (
+          <div>
+            Yo this is group and you are the admin so you can change the profile picture here
+            <UpdateGroup grp_id={id}/>
           </div>
         )}
       </div>

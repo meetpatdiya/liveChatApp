@@ -4,8 +4,10 @@ import {
   getGroupInfo,
   sendMessage,
   insertMessInfo,
-  getLastSeen
+  getLastSeen,
+  updateGroup,
 } from "../models/chatmodel.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 export const getGroups = async (req, res) => {
   const id = req.user.id;
@@ -23,20 +25,19 @@ export const getGroups = async (req, res) => {
 
 export const getMessage = async (req, res) => {
   const { id } = req.body;
-  const userId = req.user.id
+  const userId = req.user.id;
   try {
     const messages = await getMessages(id);
     const grpinfo = await getGroupInfo(id);
-    const lsnSeen = await getLastSeen(id,userId);
-    console.log(messages);
+    const lsnSeen = await getLastSeen(id, userId);
     if (messages.length == 0) {
-      return res.status(200).json({messag:"start chatting",grpinfo });
+      return res.status(200).json({ messag: "start chatting", grpinfo });
     }
-    return res.status(200).json({ messages, grpinfo,lsnSeen });
+    return res.status(200).json({ messages, grpinfo, lsnSeen });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "server errror" });
-  }  
+  }
 };
 
 export const sendMessageto = async (req, res) => {
@@ -49,22 +50,102 @@ export const sendMessageto = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Erro while inserting into messages table" });
-    const messInfo = await insertMessInfo(msg_id, "sent", cnv_id,snd_id);
+    const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
     if (!messInfo)
       return res
         .status(400)
         .json({ message: "Erro while inserting into messages status table" });
-          const io = req.app.get("io");
+    const io = req.app.get("io");
 
-   io.emit("newMessage", {
-      conversation_id:req.body.cnv_id,
-      sender_id:req.body.snd_id,
-      message:req.body.msg,
-      created_at:new Date()
-   });
+    io.emit("newMessage", {
+      conversation_id: req.body.cnv_id,
+      sender_id: req.body.snd_id,
+      message: req.body.msg,
+      created_at: new Date(),
+    });
     return res.status(200).json({ message: "Message Sent Successfully" });
   } catch (error) {
     console.log(error);
-     return res.status(500).json({ message: "server error" });
+    return res.status(500).json({ message: "server error" });
+  }
+};
+
+export const sendImageto = async (req, res) => {
+  try {
+    const { cnv_id, snd_id, msg_type } = req.body;
+    if (!cnv_id || !snd_id || !msg_type || !req.file)
+      return res
+        .status(400)
+        .json({ success: false, message: "insufficient data" });
+    const folderName = msg_type == "image" ? "chatImages" : "chatFiles";
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: folderName,
+      resource_type: "auto",
+      use_filename: true,
+      filename_override: req.file.originalname,
+    });
+    const msg_id = await sendMessage(
+      cnv_id,
+      snd_id,
+      result.secure_url,
+      msg_type,
+    );
+    if (!msg_id)
+      return res
+        .status(400)
+        .json({ message: "Erro while inserting into messages table" });
+    const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
+    if (!messInfo)
+      return res
+        .status(400)
+        .json({ message: "Erro while inserting into messages status table" });
+    const io = req.app.get("io");
+    io.emit("newMessage", {
+      conversation_id: cnv_id,
+      sender_id: snd_id,
+      message: result.secure_url,
+      created_at: new Date(),
+    });
+    return res
+      .status(200)
+      .json({ message: "Message Sent Successfully", image: result.secure_url });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+export const updateGroupInfo = async (req, res) => {
+  try {
+    const { grp_id, grp_name } = req.body;
+    if (!grp_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "insufficient data" });
+    }
+     const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "profile_pictures",
+      resource_type: "auto",
+      use_filename: true,
+      filename_override: req.file.originalname,
+    });
+    const data = await updateGroup(grp_id, result.secure_url, grp_name);
+    if (!data) {
+      return res
+        .status(400)
+        .json({ message: "Erro while changing group info" });
+    }
+    return res
+      .status(200)
+      .json({ success: true, message: "group updated successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };

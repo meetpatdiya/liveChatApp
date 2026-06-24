@@ -11,7 +11,10 @@ const Login = () => {
     let newErros = {};
     let isvalid = true;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!email || !emailRegex.test(email)) {
+    if (!email || email.trim() == "") {
+      isvalid = false;
+      newErros.email = "Email field is required";
+    } else if (!emailRegex.test(email)) {
       isvalid = false;
       newErros.email = "Invalid Email formate";
     }
@@ -19,19 +22,25 @@ const Login = () => {
       isvalid = false;
       newErros.password = "Minimum length of Password should be 8";
     }
-    seterrors(newErros || {});
+    seterrors(newErros);
     if (!isvalid) return;
     try {
       const data = await api.post("/auth/login", {
         email: email,
         password: password,
       });
-      if (data.status == 200) {
+      if (data.status === 200) {
         navigate("/chatdashboard");
         localStorage.setItem("userId", data.data.id);
       }
     } catch (error) {
-      console.log(error);
+      console.log(error.response);
+      if (error.response?.status === 401) {
+        console.log(error.response.data.message);
+       seterrors({
+      password: error.response.data.message,
+    });
+      }
     }
   };
   return (

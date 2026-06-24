@@ -3,11 +3,15 @@ import api from "../ApiServices/Api.js";
 import { useNavigate, Outlet } from "react-router-dom";
 import CreateGroup from "./CreateGroup.jsx";
 import { io } from "socket.io-client";
+import AddProfilePicture from "./AddProfilePicture.jsx";
 const Dashboard = () => {
   const [data, setdata] = useState(null);
   const [search, setsearch] = useState("");
   const [output, setoutput] = useState({});
   const navigate = useNavigate();
+  const userId = localStorage.getItem("userId")
+  console.log(userId);
+  
   useEffect(() => {
     const socket = io("http://localhost:3000", {
       auth: {
@@ -59,7 +63,8 @@ const Dashboard = () => {
     <>
       <div>
         <h1>Welcome to This Encrypted App  <button onClick={handleLogout}>Logout</button> </h1>
-        <CreateGroup/>
+        <CreateGroup/> <br /> <hr />
+        <AddProfilePicture />
         <input
           type="text"
           value={search}
