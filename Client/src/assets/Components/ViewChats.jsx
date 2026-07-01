@@ -23,13 +23,21 @@ const ViewChats = () => {
     });
     return () => socket.current.disconnect();
   }, []);
+  useEffect(() => {
+    if (!socket.current) return;
+
+    socket.current.on("connect", () => {
+      socket.current.emit("messagesRead", {
+        conversationId: id,
+      });
+    });
+  }, []);
 
   const getMessages = async () => {
     try {
       const { data } = await api.post("/chat/getmessages", { id: id });
       if (data.messages != null) {
         console.log(data.messages);
-
         setchats(data?.messages);
       } else {
         setchats([]);
@@ -102,16 +110,58 @@ const ViewChats = () => {
 
   useEffect(() => {
     if (!socket.current) return;
+    socket.current.on("messagesDelivered", ({ receiverId }) => {
+      console.log(receiverId);
+      if (userInfo?.id === receiverId) {
+        getMessages();
+      }
+    });
+
+    return () => {
+      socket.current.off("messagesDelivered");
+    };
+  }, [userInfo?.id]);
+
+  useEffect(() => {
+    if (!socket.current) return;
     const handleMessage = (msg) => {
       if (msg.conversation_id == id) {
         setchats((prev) => [...prev, msg]);
+        socket.current.emit("messagesRead", {
+          conversationId: id,
+        });
       }
     };
 
-    socket.current.on("newMessage", handleMessage);
+    socket.current.on(`newMessage_${id}`, handleMessage);
 
     return () => {
-      socket.current.off("newMessage", handleMessage);
+      socket.current.off(`newMessage_${id}`, handleMessage);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    console.log(
+      "Emitting messagesRead",
+      "user:",
+      localStorage.getItem("userId"),
+      "conversation:",
+      id,
+    );
+    console.log("hey");
+
+    if (!socket.current) return;
+    socket.current.emit("messagesRead", {
+      conversationId: id,
+    });
+    const handleMessagesRead = ({ conversationId }) => {
+      if (id == conversationId) {
+        getMessages();
+      }
+    };
+    socket.current.on("messagesRead", handleMessagesRead);
+    return () => {
+      socket.current.off("messagesRead", handleMessagesRead);
     };
   }, [id]);
 
@@ -180,8 +230,8 @@ const ViewChats = () => {
             {chats.length > 0 &&
               chats.map((item, index) => {
                 const isSender = item.sender_id == userId;
-                const fileIndex = item.message.indexOf("/chatFiles/")
-                const fileName =item.message.substring(fileIndex+11)
+                const fileIndex = item.message.indexOf("/chatFiles/");
+                const fileName = item.message.substring(fileIndex + 11);
                 const currentDate = new Date(
                   item.created_at,
                 ).toLocaleDateString();
@@ -204,14 +254,16 @@ const ViewChats = () => {
                     <div style={{ color: isSender ? "green" : "red" }}>
                       {item.message_type == "text" ? (
                         <div>{item.message}</div>
-                      ) : item.message_type == "file" ?
-                       (
-                        <a href={item.message} target="_blank">{fileName}</a>
+                      ) : item.message_type == "file" ? (
+                        <a href={item.message} target="_blank">
+                          {fileName}
+                        </a>
                       ) : (
                         <img src={item.message} width={200} />
                       )}
-
-                      <small>{time}</small>
+                      <small>
+                        {time} {isSender && item.status}
+                      </small>
                     </div>
                   </div>
                 );
@@ -267,8 +319,9 @@ const ViewChats = () => {
         )}
         {isGroup && isAdmin && (
           <div>
-            Yo this is group and you are the admin so you can change the profile picture here
-            <UpdateGroup grp_id={id}/>
+            Yo this is group and you are the admin so you can change the profile
+            picture here
+            <UpdateGroup grp_id={id} />
           </div>
         )}
       </div>

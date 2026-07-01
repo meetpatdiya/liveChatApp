@@ -30,7 +30,7 @@ export const login = async (req, res) => {
       .status(401)
       .json({ message: "password should be 8 charachters long" });
   }
-  const bpassword = await bcrypt.hash(password, 10);
+
   try {
     const result = await CheckUser(email, password);
     if (result.error)

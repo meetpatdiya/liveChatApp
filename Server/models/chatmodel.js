@@ -1,4 +1,6 @@
 import db from "../config/db.js";
+import { getSocketId } from "./socketManager.js";
+
 export const getGroupName = async (id) => {
   const q = `SELECT
     c.id,
@@ -21,18 +23,19 @@ LEFT JOIN conversation_members other_cm
 LEFT JOIN users u
     ON u.id = other_cm.user_id
 WHERE cm.user_id = ?;`;
-  const [data] = await db.promise().query(q, [id,id]);
-  return data;  
+  const [data] = await db.promise().query(q, [id, id]);
+  return data;
 };
+
 export const getMessages = async (id) => {
   const q = `select m.*,ms.user_id,ms.status,ms.seen_at from Messages m join
    message_status ms on m.id = ms.message_id where m.conversation_id = ? order
     by m.created_at asc;`;
-  const [data] = await db.promise().query(q, [id]);  
+  const [data] = await db.promise().query(q, [id]);
   return data;
 };
 
-export const getLastSeen = async (id,userId) => {  
+export const getLastSeen = async (id, userId) => {
   const q = `SELECT 
     u.id,
     u.is_online,
@@ -40,8 +43,8 @@ export const getLastSeen = async (id,userId) => {
 FROM conversation_members cm
 INNER JOIN users u 
     ON cm.user_id = u.id
-WHERE cm.conversation_id = ? and u.id != ?`
-  const [data] = await db.promise().query(q, [id,userId]);  
+WHERE cm.conversation_id = ? and u.id != ?`;
+  const [data] = await db.promise().query(q, [id, userId]);
   return data;
 };
 
@@ -50,6 +53,7 @@ export const getGroupInfo = async (id) => {
   const [data] = await db.promise().query(q, [id]);
   return data;
 };
+
 export const sendMessage = async (cnv_id, snd_id, msg, msg_type) => {
   const q = `Insert into messages(conversation_id,sender_id,message,message_type) values(?,?,?,?)`;
   const [messageInfo] = await db
@@ -57,17 +61,19 @@ export const sendMessage = async (cnv_id, snd_id, msg, msg_type) => {
     .query(q, [cnv_id, snd_id, msg, msg_type]);
   return messageInfo.insertId;
 };
+
 export const insertMessInfo = async (msg_id, status, cnv_id, snd_id) => {
   try {
     const q1 = `SELECT user_id 
   FROM conversation_members
   WHERE conversation_id = ? and user_id != ?`;
-    const [members] = await db.promise().query(q1, [cnv_id,snd_id]);
+    const [members] = await db.promise().query(q1, [cnv_id, snd_id]);
     for (const member of members) {
+      const updatedStatus = getSocketId(member.user_id) ? "delivered" : "sent";
       await db.promise().query(
         `INSERT INTO message_status(message_id,user_id,status)
        VALUES(?,?,?)`,
-        [msg_id, member.user_id, status],
+        [msg_id, member.user_id, updatedStatus],
       );
     }
     return true;
@@ -77,8 +83,9 @@ export const insertMessInfo = async (msg_id, status, cnv_id, snd_id) => {
   }
 };
 
-export const updateGroup = async (grp_id,grp_avatar,grp_name) => {
-  const q ="UPDATE conversations SET group_avatar = ?,group_name = ? WHERE id = ? ";
-  const [data] = await db.promise().query(q, [grp_avatar, grp_name,grp_id]);
+export const updateGroup = async (grp_id, grp_avatar, grp_name) => {
+  const q =
+    "UPDATE conversations SET group_avatar = ?,group_name = ? WHERE id = ? ";
+  const [data] = await db.promise().query(q, [grp_avatar, grp_name, grp_id]);
   return data;
 };

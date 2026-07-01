@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import { compare } from "bcrypt";
 import jwt from "jsonwebtoken";
+
 export const CreateUser = async (name, email, password) => {
   const [result] = await db
     .promise()
@@ -11,6 +12,7 @@ export const CreateUser = async (name, email, password) => {
     ]);
   return result;
 };
+
 export const CheckUser = async (email, password) => {    
   const [data] = await db
     .promise()

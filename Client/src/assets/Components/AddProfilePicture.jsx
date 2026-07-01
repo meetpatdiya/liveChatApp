@@ -7,10 +7,10 @@ const AddProfilePicture = () => {
   const [chngImg, setchngImg] = useState(false);
   const userId = localStorage.getItem("userId");
   const handleImage = (e) => {
-    setImage(e.target.files[0]);
+    setImage(e.target.files[0])
   };
   const handleProfileChange = async () => {
-    console.log(image);
+    console.log(image)
     if (!image) {
       setImgError("Please choose a image");
       return;

@@ -47,7 +47,7 @@ export const sendMessageto = async (req, res) => {
   try {
     const msg_id = await sendMessage(cnv_id, snd_id, msg, msg_type);
     if (!msg_id)
-      return res
+      return res   
         .status(400)
         .json({ message: "Erro while inserting into messages table" });
     const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
@@ -57,12 +57,14 @@ export const sendMessageto = async (req, res) => {
         .json({ message: "Erro while inserting into messages status table" });
     const io = req.app.get("io");
 
-    io.emit("newMessage", {
-      conversation_id: req.body.cnv_id,
-      sender_id: req.body.snd_id,
-      message: req.body.msg,
+    io.emit(`newMessage_${cnv_id}`, { 
+      conversation_id: cnv_id,
+      sender_id: snd_id,
+      message: msg,
+      message_type:msg_type,
       created_at: new Date(),
     });
+    
     return res.status(200).json({ message: "Message Sent Successfully" });
   } catch (error) {
     console.log(error);
@@ -93,7 +95,7 @@ export const sendImageto = async (req, res) => {
     if (!msg_id)
       return res
         .status(400)
-        .json({ message: "Erro while inserting into messages table" });
+        .json({ message: "Erro while inserting into messages table" });  
     const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
     if (!messInfo)
       return res
@@ -132,6 +134,7 @@ export const updateGroupInfo = async (req, res) => {
       use_filename: true,
       filename_override: req.file.originalname,
     });
+      
     const data = await updateGroup(grp_id, result.secure_url, grp_name);
     if (!data) {
       return res
