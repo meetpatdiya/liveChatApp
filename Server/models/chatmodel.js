@@ -48,9 +48,33 @@ WHERE cm.conversation_id = ? and u.id != ?`;
   return data;
 };
 
-export const getGroupInfo = async (id) => {
-  const q = `Select * from conversations where id = ?`;
-  const [data] = await db.promise().query(q, [id]);
+export const getGroupInfo = async (userId,id) => {
+  const q = `SELECT
+    c.id,
+    c.type,
+    c.privacy,
+    c.created_by,
+    CASE
+        WHEN c.type = 'group' THEN c.group_name
+        ELSE u.name
+    END AS group_name,
+
+    CASE
+        WHEN c.type = 'group' THEN c.group_avatar
+        ELSE u.avatar
+    END AS group_avatar
+
+FROM conversations c
+
+LEFT JOIN conversation_members cm
+    ON c.id = cm.conversation_id
+    AND cm.user_id != ?      
+
+LEFT JOIN users u
+    ON u.id = cm.user_id
+
+WHERE c.id = ?;`;
+  const [data] = await db.promise().query(q, [userId,id]);
   return data;
 };
 

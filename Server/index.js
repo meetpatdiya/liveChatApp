@@ -12,6 +12,7 @@ import userRoutes from "./routes/userRoutes.js";
 import cookieParser from "cookie-parser";
 import isauth from "./middleware/isauth.js";
 import { addUser, removeUser,getSocketId,getOnlineUsers } from "./models/socketManager.js";
+import errorMiddleware from "./middleware/errorMiddleware.js"
 import { globalLimiter } from "./middleware/Loginlimit.js";
 const app = express();
 const server = http.createServer(app);
@@ -25,15 +26,16 @@ app.set("io", io);
 io.on("connection", async (socket) => {
   const userId = socket.handshake.auth.userId;
   addUser(Number(userId), socket.id);
-  await db
+  const data = await db
     .promise()
-    .query("UPDATE users SET is_online = true WHERE id = ?", [userId]);
+    .query("UPDATE users SET is_online = 1 WHERE id = ?", [userId]);    
   await db
     .promise()
     .query(
       "UPDATE message_status set status = 'delivered' where user_id = ? and status ='sent'",
       [userId],
     );
+    console.log("i am in login");
   const [showOthers] = await db
     .promise()
     .query(
@@ -66,14 +68,10 @@ socket.on(`messagesRead`, async (data) => {
   );
   console.log(result.affectedRows);
 });
-  io.emit("userOnline", userId);
+io.emit("userOnline", userId);
   socket.on("disconnect", async () => {
-    await db
-      .promise()
-      .query(
-        "UPDATE users SET is_online = false, last_seen = NOW() WHERE id = ?",
-        [userId],
-      );
+    console.log("hello bhai i am disconnecting");
+    await db.promise().query("UPDATE users SET is_online = false, last_seen = NOW() WHERE id = ?",[userId]);
     removeUser(socket.id);
     io.emit("userOffline", {
       userId,
@@ -92,11 +90,15 @@ app.use(
     allowedHeaders: ["Authorization", "Content-Type"],
   }),
 );
+app.get("/",isauth,(req,res)=>{
+  return res.status(200).json({message:"hey"})
+})
 app.use("/auth", authRoutes);
 app.use("/chat", isauth, chatRoutes);
 app.use("/search", isauth, searchRoutes);
 app.use("/create", isauth, createRoutes);
 app.use("/user", isauth, userRoutes);
+app.use(errorMiddleware)
 server.listen(3000, () => {
   console.log("Server Running");
 });

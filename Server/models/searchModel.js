@@ -32,11 +32,21 @@ WHERE (u.name LIKE ? OR u.email LIKE ?)
   return searchedName;
 };
 
-export const searchGroups = async (name) => {
+export const searchGroups = async (name,id) => {
   const value = `%${name}%`
-  const q = `select * from conversations where group_name like ? and type='public' `;
-  const [searchGroup] =await db.promise().query(q, [value]);
+  const q = `SELECT
+    c.*,
+    CASE
+        WHEN cm.user_id IS NOT NULL THEN 1
+        ELSE 0
+    END AS hasConversation
+FROM conversations c
+LEFT JOIN conversation_members cm
+    ON c.id = cm.conversation_id
+    AND cm.user_id = ?
+WHERE c.group_name LIKE ?
+  AND c.privacy = 'public'; `;
+  const [searchGroup] =await db.promise().query(q, [id,value]);
+  console.log(searchGroup);
     return searchGroup;
 };
-
-
