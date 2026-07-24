@@ -27,11 +27,15 @@ WHERE cm.user_id = ?;`;
   return data;
 };
 
-export const getMessages = async (id) => {
+export const getMessages = async (id,userId) => {
   const q = `select m.*,ms.user_id,ms.status,ms.seen_at from Messages m join
-   message_status ms on m.id = ms.message_id where m.conversation_id = ? order
-    by m.created_at asc;`;
-  const [data] = await db.promise().query(q, [id]);
+    message_status ms on m.id = ms.message_id join conversation_members cm on cm.conversation_id = m.conversation_id 
+    where m.conversation_id = ? AND (
+        cm.cleared_at IS NULL
+        OR m.created_at > cm.cleared_at
+    )and cm.user_id = ? order
+     by m.created_at asc`
+  const [data] = await db.promise().query(q, [id,userId]);
   return data;
 };
 
@@ -58,7 +62,10 @@ export const getGroupInfo = async (userId,id) => {
         WHEN c.type = 'group' THEN c.group_name
         ELSE u.name
     END AS group_name,
-
+    CASE 
+        WHEN c.type = 'group' THEN null
+        ELSE u.email
+        END AS user_email,
     CASE
         WHEN c.type = 'group' THEN c.group_avatar
         ELSE u.avatar
@@ -92,12 +99,12 @@ export const insertMessInfo = async (msg_id, status, cnv_id, snd_id) => {
   FROM conversation_members
   WHERE conversation_id = ? and user_id != ?`;
     const [members] = await db.promise().query(q1, [cnv_id, snd_id]);
-    for (const member of members) {
-      const updatedStatus = getSocketId(member.user_id) ? "delivered" : "sent";
+    for (const m of members) {
+      const updatedStatus = getSocketId(m.user_id) ? "delivered" : "sent";
       await db.promise().query(
         `INSERT INTO message_status(message_id,user_id,status)
        VALUES(?,?,?)`,
-        [msg_id, member.user_id, updatedStatus],
+        [msg_id, m.user_id, updatedStatus],
       );
     }
     return true;
@@ -113,3 +120,17 @@ export const updateGroup = async (grp_id, grp_avatar, grp_name) => {
   const [data] = await db.promise().query(q, [grp_avatar, grp_name, grp_id]);
   return data;
 };
+
+export const getGroupMembers = async(cnv_id)=>{
+  const q = "select u.id,u.name,u.email,u.avatar,u.is_online,u.last_seen from users u join conversation_members cm on u.id = cm.user_id where cm.conversation_id = ?;";
+  const [groupUsers] = await db.promise().query(q,[cnv_id]);
+  return groupUsers;
+}
+
+export const clearChat = async(cnv_id,userId)=>{
+  console.log("this are the inputs",cnv_id,"hey",userId)
+const q = "update conversation_members set cleared_at = now() where conversation_id = ? and user_id = ?";
+const [output] = await db.promise().query(q,[cnv_id,userId]);
+console.log(output,"hey")
+return output;
+}

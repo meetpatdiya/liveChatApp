@@ -22,6 +22,7 @@ create table conversation_members(
     `conversation_id` int not null,
     `user_id` int not null,
     `joined_at` timestamp default current_timestamp(),
+    `cleared_at`timestamp null,
     constraint `cnv_mem_cnv` FOREIGN KEY(`conversation_id`) REFERENCES `conversations`(`id`),
     constraint `cnv_mem_usr` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
 );
@@ -43,4 +44,16 @@ create table message_status(
     `seen_at` timestamp,
     constraint `msg_sts_msg` FOREIGN KEY(`message_id`) REFERENCES `messages`(`id`),
     constraint `msg_sts_usr` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`)
+);
+CREATE TABLE user_blocks (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `blocker_id` INT NOT NULL,
+    `blocked_id` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (`blocker_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`blocked_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+
+    UNIQUE (`blocker_id`, `blocked_id`),
+    CHECK (`blocker_id` <> `blocked_id`)
 );

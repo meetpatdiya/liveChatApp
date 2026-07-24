@@ -6,6 +6,8 @@ import {
   insertMessInfo,
   getLastSeen,
   updateGroup,
+  getGroupMembers,
+  clearChat,
 } from "../models/chatmodel.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
@@ -21,16 +23,17 @@ export const getGroups = asyncHandler(async (req, res) => {
 });
 
 export const getMessage = asyncHandler(async (req, res) => {
+  console.log(req.isBlocked,"hey ami clocked",req.blockedByMe);
   const { id } = req.body;
   const userId = req.user.id;
   if (!id) throw new AppError("user id is required", 400);
-  const messages = await getMessages(id);
+  const messages = await getMessages(id,userId);
   const grpinfo = await getGroupInfo(userId,id);
   const lsnSeen = await getLastSeen(id, userId);
   if (messages.length == 0) {
     return res.status(200).json({ messag: "start chatting", grpinfo });
   }
-  return res.status(200).json({ messages, grpinfo, lsnSeen });
+  return res.status(200).json({ messages, grpinfo, lsnSeen,isBlocked:req.isBlocked,blockedByMe:req.blockedByMe });
 });
 
 export const sendMessageto = asyncHandler(async (req, res) => {
@@ -39,7 +42,7 @@ export const sendMessageto = asyncHandler(async (req, res) => {
     throw new AppError("please provide details", 400);
 
   const msg_id = await sendMessage(cnv_id, snd_id, msg, msg_type);
-
+ 
   if (!msg_id) throw new AppError("error while inserting message", 400);
   const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
 
@@ -108,3 +111,18 @@ export const updateGroupInfo = asyncHandler(async (req, res) => {
     .status(200)
     .json({ success: true, message: "group updated successfully" });
 });
+
+export const getGroupMem = asyncHandler(async(req,res)=>{
+  const {id} = req.params;
+  if(!id)  throw new AppError("please provide group id", 400);
+  const result = await getGroupMembers(id);
+  res.status(200).json({success:true,result});
+})
+
+export const clearChats = asyncHandler(async(req,res)=>{
+  const userId = req.user.id;
+  const {cnv_id} = req.body;
+  if(!cnv_id) throw new AppError("conversation_id is not defined",400);
+  const result = await clearChat(cnv_id,userId);
+  res.status(200).json({success:true,result})
+})

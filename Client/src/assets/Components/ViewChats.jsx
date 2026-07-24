@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { useParams, useNavigate, Outlet } from "react-router-dom";
+import { useParams, useNavigate, Outlet,useLocation } from "react-router-dom";
 import api from "../ApiServices/Api";
 import { io } from "socket.io-client";
 import UpdateGroup from "./UpdateGroup";
@@ -9,16 +9,15 @@ const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
   const [chats, setchats] = useState([]);
   const [userInfo, setUserInfo] = useState({});
+  const [isBlocked, setisBlocked] = useState(false)
   const [inpt, setinpt] = useState("");
-  const [addUserInpt, setaddUserInpt] = useState("");
-  const [addData, setaddData] = useState([]);
   const [file, setFile] = useState(null);
-  const [showInfo, setshowInfo] = useState(false);
   const { id } = useParams();
   const userId = Number(localStorage.getItem("userId"));
   const socket = useSocket();
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+  const showInfo =location.pathname.endsWith("/info")
 
   useEffect(() => {
     if (!socket) return;
@@ -37,6 +36,7 @@ const ViewChats = () => {
         setchats([]);
       }
       console.log(data);
+      setisBlocked(data.isBlocked)
       setgroupInfo(data?.grpinfo[0]);
       setUserInfo(data?.lsnSeen[0]);
     } catch (error) {
@@ -56,17 +56,6 @@ const ViewChats = () => {
     messagesEndRef.current?.scrollIntoView();
   }, [chats]);
 
-  const getSearchedData = async () => {
-    try {
-      const { data } = await api.get(
-        `/create/checkMembers/${addUserInpt}/${id}`,
-      );
-      setaddData(data.data);
-    } catch (error) {
-      console.log(error.response);
-    }
-  };
-
   const handleFile = async (e) => {
     const selectedFile = e.target.files[0];
     const formData = new FormData();
@@ -85,29 +74,6 @@ const ViewChats = () => {
       console.log(err);
     }
   };
-
-  const addToGroup = async (userId) => {
-    try {
-      const { data } = await api.post("/create/insertgrpmembers", {
-        grp_id: id,
-        mem_id: userId,
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (addUserInpt.trim().length >= 2) {
-        getSearchedData();
-      } else {
-        setaddData([]);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [addUserInpt]);
 
   useEffect(() => {
     if (!socket) return;
@@ -215,7 +181,7 @@ const ViewChats = () => {
       {!showInfo ? (
         <div className="flex flex-col h-full">
           <div
-            onClick={() => {setshowInfo(true); navigate("info")}}
+            onClick={() =>  navigate("info")}
             className="flex items-center gap-3 px-5 py-3 bg-white border-b border-slate-200"
           >
             <img
@@ -227,7 +193,7 @@ const ViewChats = () => {
               <p className="font-semibold text-slate-800">
                 {groupInfo?.group_name}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className={`text-xs ${userInfo?.is_online ?"text-green-600 font-bold":"text-slate-400"}`}>
                 {userInfo?.is_online
                   ? "online"
                   : "Last seen: " +
@@ -236,7 +202,6 @@ const ViewChats = () => {
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-1">
             {chats.length > 0 &&
               chats.map((item, index) => {
@@ -301,68 +266,14 @@ const ViewChats = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Admin panels */}
-          {isGroup && isAdmin && isPrivate && (
-            <div className="mx-4 mb-2 p-4 rounded-xl bg-white border border-slate-200">
-              <p className="text-sm font-medium text-slate-700 mb-2">
-                Hello admin you can add members
-              </p>
-              <input
-                type="text"
-                value={addUserInpt}
-                onChange={(e) => setaddUserInpt(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-2"
-              />
-              {addData.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {addData.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <img
-                        src={item.avatar}
-                        alt={item.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-800">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-slate-400">{item.email}</p>
-                      </div>
-                      {item.has_connection ? (
-                        <p className="text-xs text-slate-400">
-                          Already in group
-                        </p>
-                      ) : (
-                        <button
-                          onClick={() => addToGroup(item.id)}
-                          className="text-xs font-medium text-emerald-700 border border-emerald-200 rounded-full px-3 py-1.5 hover:bg-emerald-50 transition"
-                        >
-                          Add to group
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {isGroup && isAdmin && (
-            <div className="mx-4 mb-2 p-4 rounded-xl bg-white border border-slate-200">
-              <p className="text-sm text-slate-600 mb-2">
-                Yo this is group and you are the admin so you can change the
-                profile picture here
-              </p>
-              <UpdateGroup grp_id={id} />
-            </div>
-          )}
-
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-t border-slate-200">
             <label
               htmlFor="file-upload"
-              className="cursor-pointer text-xl text-slate-500 hover:text-emerald-600 transition"
-            >
-              📎
+  className={`text-xl transition ${
+    isBlocked
+      ? "cursor-not-allowed opacity-50 text-slate-400"
+      : "cursor-pointer text-slate-500 hover:text-emerald-600"
+  }`}       >       📎
             </label>
             <input
               id="file-upload"
@@ -370,24 +281,29 @@ const ViewChats = () => {
               accept="image/*,.pdf,.doc,.docx"
               hidden
               onChange={handleFile}
+              disabled={isBlocked}
             />
             <input
               type="text"
+              disabled={isBlocked}
               value={inpt}
               onChange={(e) => setinpt(e.target.value)}
               placeholder="Type a message"
-              className="flex-1 px-4 py-2.5 rounded-full bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 px-4 py-2.5 rounded-full bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
+            disabled = {isBlocked}
               onClick={() => handleSendMessage(inpt, "text")}
-              className="px-5 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+              className="px-5 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition  disabled:bg-gray-400
+             disabled:cursor-not-allowed
+             disabled:opacity-50"
             >
               Send
             </button>
           </div>
         </div>
       ) : (
-        <Outlet  data={"hello"}/>
+        <Outlet context={{groupInfo,userInfo,isAdmin,isGroup,isPrivate}}/>
       )}
     </>
   );

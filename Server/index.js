@@ -9,6 +9,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import createRoutes from "./routes/createRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import blockRoutes from "./routes/blockRoutes.js"
 import cookieParser from "cookie-parser";
 import isauth from "./middleware/isauth.js";
 import { addUser, removeUser,getSocketId,getOnlineUsers } from "./models/socketManager.js";
@@ -98,6 +99,7 @@ app.use("/chat", isauth, chatRoutes);
 app.use("/search", isauth, searchRoutes);
 app.use("/create", isauth, createRoutes);
 app.use("/user", isauth, userRoutes);
+app.use("/block",isauth,blockRoutes)
 app.use(errorMiddleware)
 server.listen(3000, () => {
   console.log("Server Running");

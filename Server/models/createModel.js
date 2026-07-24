@@ -23,7 +23,7 @@ export const addMembers = async (cnv_id, user_id) => {
 export const checkGroupMembers = async (name, cnv_id) => {
   const value = `%${name}%`;
   const q = `SELECT u.id,u.name,u.email,u.avatar,
-CASE
+CASE  
     WHEN cm.user_id IS NOT NULL THEN 1
     ELSE 0
 END AS has_connection

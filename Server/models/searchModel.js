@@ -20,7 +20,7 @@ LEFT JOIN (
     JOIN conversations c
         ON c.id = cm1.conversation_id
     WHERE cm1.user_id = ?
-      AND cm2.user_id != ?
+      AND cm2.user_id != ?  
       AND c.type = 'direct'
 ) conv
     ON u.id = conv.user_id
@@ -39,7 +39,7 @@ export const searchGroups = async (name,id) => {
     CASE
         WHEN cm.user_id IS NOT NULL THEN 1
         ELSE 0
-    END AS hasConversation
+    END AS hasConversation  
 FROM conversations c
 LEFT JOIN conversation_members cm
     ON c.id = cm.conversation_id
