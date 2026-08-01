@@ -13,7 +13,8 @@ export const getGroupName = async (id) => {
     CASE
         WHEN c.type = 'group' THEN c.group_avatar
         ELSE u.avatar
-    END AS display_avatar
+    END AS display_avatar,
+    COALESCE(unread.unread_count, 0) AS unread_messages
 FROM conversations c
 JOIN conversation_members cm
     ON c.id = cm.conversation_id
@@ -22,20 +23,32 @@ LEFT JOIN conversation_members other_cm
     AND other_cm.user_id != ?
 LEFT JOIN users u
     ON u.id = other_cm.user_id
-WHERE cm.user_id = ?;`;
-  const [data] = await db.promise().query(q, [id, id]);
+LEFT JOIN (
+    SELECT
+        m.conversation_id,
+        COUNT(*) AS unread_count
+    FROM message_status ms
+    JOIN messages m
+        ON m.id = ms.message_id
+    WHERE ms.user_id = ?
+      AND ms.status <> 'read'
+    GROUP BY m.conversation_id
+) unread
+    ON unread.conversation_id = c.id
+WHERE cm.user_id = ?`;
+  const [data] = await db.promise().query(q, [id, id, id]);
   return data;
 };
 
-export const getMessages = async (id,userId) => {
+export const getMessages = async (id, userId) => {
   const q = `select m.*,ms.user_id,ms.status,ms.seen_at from Messages m join
     message_status ms on m.id = ms.message_id join conversation_members cm on cm.conversation_id = m.conversation_id 
     where m.conversation_id = ? AND (
         cm.cleared_at IS NULL
         OR m.created_at > cm.cleared_at
     )and cm.user_id = ? order
-     by m.created_at asc`
-  const [data] = await db.promise().query(q, [id,userId]);
+     by m.created_at asc`;
+  const [data] = await db.promise().query(q, [id, userId]);
   return data;
 };
 
@@ -52,7 +65,7 @@ WHERE cm.conversation_id = ? and u.id != ?`;
   return data;
 };
 
-export const getGroupInfo = async (userId,id) => {
+export const getGroupInfo = async (userId, id) => {
   const q = `SELECT
     c.id,
     c.type,
@@ -81,7 +94,7 @@ LEFT JOIN users u
     ON u.id = cm.user_id
 
 WHERE c.id = ?;`;
-  const [data] = await db.promise().query(q, [userId,id]);
+  const [data] = await db.promise().query(q, [userId, id]);
   return data;
 };
 
@@ -121,16 +134,18 @@ export const updateGroup = async (grp_id, grp_avatar, grp_name) => {
   return data;
 };
 
-export const getGroupMembers = async(cnv_id)=>{
-  const q = "select u.id,u.name,u.email,u.avatar,u.is_online,u.last_seen from users u join conversation_members cm on u.id = cm.user_id where cm.conversation_id = ?;";
-  const [groupUsers] = await db.promise().query(q,[cnv_id]);
+export const getGroupMembers = async (cnv_id) => {
+  const q =
+    "select u.id,u.name,u.email,u.avatar,u.is_online,u.last_seen from users u join conversation_members cm on u.id = cm.user_id where cm.conversation_id = ?;";
+  const [groupUsers] = await db.promise().query(q, [cnv_id]);
   return groupUsers;
-}
+};
 
-export const clearChat = async(cnv_id,userId)=>{
-  console.log("this are the inputs",cnv_id,"hey",userId)
-const q = "update conversation_members set cleared_at = now() where conversation_id = ? and user_id = ?";
-const [output] = await db.promise().query(q,[cnv_id,userId]);
-console.log(output,"hey")
-return output;
-}
+export const clearChat = async (cnv_id, userId) => {
+  console.log("this are the inputs", cnv_id, "hey", userId);
+  const q =
+    "update conversation_members set cleared_at = now() where conversation_id = ? and user_id = ?";
+  const [output] = await db.promise().query(q, [cnv_id, userId]);
+  console.log(output, "hey");
+  return output;
+};

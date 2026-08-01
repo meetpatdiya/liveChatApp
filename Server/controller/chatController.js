@@ -23,7 +23,6 @@ export const getGroups = asyncHandler(async (req, res) => {
 });
 
 export const getMessage = asyncHandler(async (req, res) => {
-  console.log(req.isBlocked,"hey ami clocked",req.blockedByMe);
   const { id } = req.body;
   const userId = req.user.id;
   if (!id) throw new AppError("user id is required", 400);
@@ -57,6 +56,10 @@ export const sendMessageto = asyncHandler(async (req, res) => {
     message_type: msg_type,
     created_at: new Date(),
   });
+  io.emit('newMessage',{
+     conversation_id: cnv_id,
+  })
+  console.log("hey i gets executed")
   return res.status(200).json({ message: "Message Sent Successfully" });
 });
 

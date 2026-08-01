@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { useParams, useNavigate, Outlet,useLocation } from "react-router-dom";
+import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
 import api from "../ApiServices/Api";
 import { io } from "socket.io-client";
 import UpdateGroup from "./UpdateGroup";
@@ -9,15 +9,17 @@ const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
   const [chats, setchats] = useState([]);
   const [userInfo, setUserInfo] = useState({});
-  const [isBlocked, setisBlocked] = useState(false)
+  const [isBlocked, setisBlocked] = useState(false);
   const [inpt, setinpt] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState(null);
   const [file, setFile] = useState(null);
   const { id } = useParams();
   const userId = Number(localStorage.getItem("userId"));
   const socket = useSocket();
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
-  const showInfo =location.pathname.endsWith("/info")
+  const showInfo = location.pathname.endsWith("/info");
 
   useEffect(() => {
     if (!socket) return;
@@ -26,6 +28,33 @@ const ViewChats = () => {
       conversationId: id,
     });
   }, [socket, id]);
+
+ useEffect(() => {
+    if (!socket) return;
+
+    socket.emit("joinConversation", id);
+}, [socket, id]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTyping = (data) => {
+      console.log("hey he is typing");
+      setTypingUser(data.senderId);
+    };
+
+    const handleStopTyping = () => {
+      setTypingUser(null);
+    };
+
+    socket.on("userTyping", handleTyping);
+    socket.on("userStopTyping", handleStopTyping);
+
+    return () => {
+      socket.off("userTyping", handleTyping);
+      socket.off("userStopTyping", handleStopTyping);
+    };
+  }, [socket]);
 
   const getMessages = async () => {
     try {
@@ -36,7 +65,7 @@ const ViewChats = () => {
         setchats([]);
       }
       console.log(data);
-      setisBlocked(data.isBlocked)
+      setisBlocked(data.isBlocked);
       setgroupInfo(data?.grpinfo[0]);
       setUserInfo(data?.lsnSeen[0]);
     } catch (error) {
@@ -89,6 +118,8 @@ const ViewChats = () => {
   }, [socket, userInfo?.id]);
 
   useEffect(() => {
+    if (!socket) return;
+
     const handleMessage = (msg) => {
       if (msg.conversation_id == id) {
         setchats((prev) => [...prev, msg]);
@@ -106,6 +137,7 @@ const ViewChats = () => {
   }, [id, socket]);
 
   useEffect(() => {
+    if (!socket) return;
     console.log(
       "Emitting messagesRead",
       "user:",
@@ -113,7 +145,6 @@ const ViewChats = () => {
       "conversation:",
       id,
     );
-    console.log("hey");
     if (!socket) return;
     socket.emit("messagesRead", {
       conversationId: id,
@@ -170,10 +201,37 @@ const ViewChats = () => {
         });
         setinpt("");
         getMessages();
+        setTyping(false);
+        socket.emit("stopTyping", {
+          conversationId: id,
+          senderId: localStorage.getItem("userId"),
+        });
       }
     } catch (error) {
       console.log(error?.response);
     }
+  };
+
+  const handleInputChange = (e) => {
+    if (!socket) return;
+    setinpt(e.target.value);
+    if (!typing) {
+      setTyping(true);
+      socket.emit("typing", {
+        conversationId: id,
+        senderId: Number(localStorage.getItem("userId")),
+      });
+    }
+    clearTimeout(window.typingTimeout);
+
+    window.typingTimeout = setTimeout(() => {
+      socket.emit("stopTyping", {
+        conversationId: id,
+        senderId: localStorage.getItem("userId"),
+      });
+
+      setTyping(false);
+    }, 5000);
   };
 
   return (
@@ -181,7 +239,7 @@ const ViewChats = () => {
       {!showInfo ? (
         <div className="flex flex-col h-full">
           <div
-            onClick={() =>  navigate("info")}
+            onClick={() => navigate("info")}
             className="flex items-center gap-3 px-5 py-3 bg-white border-b border-slate-200"
           >
             <img
@@ -193,7 +251,9 @@ const ViewChats = () => {
               <p className="font-semibold text-slate-800">
                 {groupInfo?.group_name}
               </p>
-              <p className={`text-xs ${userInfo?.is_online ?"text-green-600 font-bold":"text-slate-400"}`}>
+              <p
+                className={`text-xs ${userInfo?.is_online ? "text-green-600 font-bold" : "text-slate-400"}`}
+              >
                 {userInfo?.is_online
                   ? "online"
                   : "Last seen: " +
@@ -267,13 +327,17 @@ const ViewChats = () => {
           </div>
 
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-t border-slate-200">
+          {typingUser && <p className="text-9xl text-red-500">Typing...</p>}
             <label
               htmlFor="file-upload"
-  className={`text-xl transition ${
-    isBlocked
-      ? "cursor-not-allowed opacity-50 text-slate-400"
-      : "cursor-pointer text-slate-500 hover:text-emerald-600"
-  }`}       >       📎
+              className={`text-xl transition ${
+                isBlocked
+                  ? "cursor-not-allowed opacity-50 text-slate-400"
+                  : "cursor-pointer text-slate-500 hover:text-emerald-600"
+              }`}
+            >
+              {" "}
+              📎
             </label>
             <input
               id="file-upload"
@@ -287,12 +351,12 @@ const ViewChats = () => {
               type="text"
               disabled={isBlocked}
               value={inpt}
-              onChange={(e) => setinpt(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Type a message"
               className="flex-1 px-4 py-2.5 rounded-full bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
-            disabled = {isBlocked}
+              disabled={isBlocked}
               onClick={() => handleSendMessage(inpt, "text")}
               className="px-5 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition  disabled:bg-gray-400
              disabled:cursor-not-allowed
@@ -303,7 +367,9 @@ const ViewChats = () => {
           </div>
         </div>
       ) : (
-        <Outlet context={{groupInfo,userInfo,isAdmin,isGroup,isPrivate}}/>
+        <Outlet
+          context={{ groupInfo, userInfo, isAdmin, isGroup, isPrivate }}
+        />
       )}
     </>
   );

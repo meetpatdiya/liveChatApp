@@ -3,7 +3,7 @@ import api from "../ApiServices/Api.js";
 import { useNavigate, Outlet } from "react-router-dom";
 import CreateGroup from "./CreateGroup.jsx";
 import { io } from "socket.io-client";
-import { useSocket } from "../context/SocketContext";
+import { useSocket } from "../Context/SocketContext";
 import { useAuth } from "../Context/AuthContext";
 
 const Dashboard = () => {
@@ -15,7 +15,8 @@ const Dashboard = () => {
   const userId = localStorage.getItem("userId");
   const { setIsAuthenticated } = useAuth();
   const socket = useSocket();
-
+  console.log(socket);
+  
   const handleLogout = async () => {
     try {
       const { data } = await api.post("/auth/logout");
@@ -74,6 +75,27 @@ const Dashboard = () => {
   useEffect(() => {
     getYourGroups();
   }, []);
+
+useEffect(() => {
+  console.log("Dashboard useEffect ran");
+  console.log("socket:", socket?.id);
+
+  if (!socket) {
+    console.log("Socket is null");
+    return;
+  }
+
+  const handleMessage = () => {
+    console.log("Received newMessage");
+    getYourGroups();
+  };
+
+  socket.on("newMessage", handleMessage);
+
+  return () => {
+    socket.off("newMessage", handleMessage);
+  };
+}, [socket]);
 
   const noResults =
     (!output.searchResult || output.searchResult.length === 0) &&
@@ -206,7 +228,9 @@ const Dashboard = () => {
           {data?.map((item, index) => (
             <div
               key={index}
-              onClick={() => navigate(`/chatdashboard/${item.id}`)}
+              onClick={() =>{ navigate(`/chatdashboard/${item.id}`);
+              setdata(prev=>prev.map(c=>c.id == item.id?{...c,unread_messages:0}:c))
+            }}
               className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 border-b border-slate-100 transition"
             >
               <img
@@ -215,6 +239,7 @@ const Dashboard = () => {
                 className="w-12 h-12 rounded-full object-cover shrink-0"
               />
               <p className="font-medium text-slate-800 truncate">{item.display_name}</p>
+              <p>{item.unread_messages > 0 ? item.unread_messages:null}</p>
             </div>
           ))}
         </div>

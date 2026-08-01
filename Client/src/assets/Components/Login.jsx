@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
 import api from "../ApiServices/Api.js";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../Context/AuthContext";
-
+import { useAuth } from "../Context/AuthContext.jsx";
+import { Eye } from "lucide-react";
+import { EyeOff } from "lucide-react";
 const Login = () => {
   const [password, setpassword] = useState("");
   const [email, setemail] = useState("");
   const [errors, seterrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const {setIsAuthenticated} = useAuth()
+  const { setIsAuthenticated } = useAuth();
   const handleSubmit = async (e) => {
     e.preventDefault();
     let newErros = {};
@@ -33,17 +35,17 @@ const Login = () => {
         password: password,
       });
       if (data.status === 200) {
-        setIsAuthenticated(true)
         localStorage.setItem("userId", data.data.id);
+        setIsAuthenticated(true);
         navigate("/chatdashboard");
       }
     } catch (error) {
       console.log(error.response);
       if (error.response?.status === 401) {
         console.log(error.response.data.message);
-       seterrors({
-      password: error.response.data.message,
-    });
+        seterrors({
+          password: error.response.data.message,
+        });
       }
     }
   };
@@ -53,9 +55,16 @@ const Login = () => {
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-8 text-center">
           Login
         </h1>
-        <form onSubmit={(e) => handleSubmit(e)} noValidate className="flex flex-col gap-5">
+        <form
+          onSubmit={(e) => handleSubmit(e)}
+          noValidate
+          className="flex flex-col gap-5"
+        >
           <div>
-            <label htmlFor="l-email" className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label
+              htmlFor="l-email"
+              className="block text-sm font-medium text-slate-700 mb-1.5"
+            >
               Enter Email
             </label>
             <input
@@ -65,24 +74,37 @@ const Login = () => {
               placeholder="Enter email"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               onChange={(e) => setemail(e.target.value)}
-              />
+            />
             {errors.email && (
               <p className="mt-1.5 text-sm text-red-500">{errors.email}</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="l-password" className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label
+              htmlFor="l-password"
+              className="block text-sm font-medium text-slate-700 mb-1.5"
+            >
               Enter Password
             </label>
-            <input
-              type="password"
-              value={password}
-              placeholder="Enter password"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-              id="l-password"
-              onChange={(e) => setpassword(e.target.value)}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                placeholder="Enter password"
+                className="w-full px-4 py-2.5 pr-11 rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                id="l-password"
+                onChange={(e) => setpassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             {errors.password && (
               <p className="mt-1.5 text-sm text-red-500">{errors.password}</p>
             )}
@@ -96,14 +118,14 @@ const Login = () => {
           </button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-6">
-           Don't have an account? 
-            <button
-              onClick={() => navigate("/register")}
-              className="text-emerald-700 font-medium hover:underline"
-            >
-             Register
-            </button>
-          </p>
+          Don't have an account?
+          <button
+            onClick={() => navigate("/register")}
+            className="text-emerald-700 font-medium hover:underline"
+          >
+            Register
+          </button>
+        </p>
       </div>
     </div>
   );
