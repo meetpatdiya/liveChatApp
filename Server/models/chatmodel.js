@@ -98,6 +98,12 @@ WHERE c.id = ?;`;
   return data;
 };
 
+export const getPinnedMessage = async(cnvId)=>{
+  const q  = `select m.message as pin_mes from messages m join conversations c on c.id = m.conversation_id where c.id =? and m.id = c.pinned_message_id`
+  const [data]= await db.promise().query(q,[cnvId]);
+  return data[0] || [];
+}
+
 export const sendMessage = async (cnv_id, snd_id, msg, msg_type) => {
   const q = `Insert into messages(conversation_id,sender_id,message,message_type) values(?,?,?,?)`;
   const [messageInfo] = await db
@@ -142,10 +148,26 @@ export const getGroupMembers = async (cnv_id) => {
 };
 
 export const clearChat = async (cnv_id, userId) => {
-  console.log("this are the inputs", cnv_id, "hey", userId);
   const q =
     "update conversation_members set cleared_at = now() where conversation_id = ? and user_id = ?";
   const [output] = await db.promise().query(q, [cnv_id, userId]);
-  console.log(output, "hey");
   return output;
 };
+
+export const deleteMessage = async(msgId)=>{
+  const q = "delete from messages where id = ?";
+  const [output] = await db.promise().query(q,[msgId]);
+  return output;
+}
+
+export const deleteMessageInfo = async(msgId)=>{
+  const q = "delete from message_status where message_id = ?";
+  const [output] = await db.promise().query(q,[msgId]);
+  return output;
+}
+
+export const pinMessage = async(msgId,cnvId)=>{
+const q = "update conversations set pinned_message_id = ? where id = ?";
+const [output] = await db.promise().query(q,[msgId,cnvId]);
+return output;
+}

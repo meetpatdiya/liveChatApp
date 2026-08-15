@@ -8,13 +8,19 @@ import {
   updateGroup,
   getGroupMembers,
   clearChat,
+  deleteMessage,
+  deleteMessageInfo,
+  getPinnedMessage,
+  pinMessage,
 } from "../models/chatmodel.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
 import asyncHandler from "../middleware/asyncHandler.js";
+import { log } from "console";
 
 export const getGroups = asyncHandler(async (req, res) => {
   const id = req.user.id;
+  if (!id) throw new AppError("Request is undefined", 400);
   const data = await getGroupName(id);
   if (data.length == 0) {
     throw new AppError("conversation does not exists", 200);
@@ -26,13 +32,23 @@ export const getMessage = asyncHandler(async (req, res) => {
   const { id } = req.body;
   const userId = req.user.id;
   if (!id) throw new AppError("user id is required", 400);
-  const messages = await getMessages(id,userId);
-  const grpinfo = await getGroupInfo(userId,id);
+  const messages = await getMessages(id, userId);
+  const grpinfo = await getGroupInfo(userId, id);
   const lsnSeen = await getLastSeen(id, userId);
+  const pinnedMes = await getPinnedMessage(id);
   if (messages.length == 0) {
     return res.status(200).json({ messag: "start chatting", grpinfo });
   }
-  return res.status(200).json({ messages, grpinfo, lsnSeen,isBlocked:req.isBlocked,blockedByMe:req.blockedByMe });
+  return res
+    .status(200)
+    .json({
+      messages,
+      grpinfo,
+      pinnedMes,
+      lsnSeen,
+      isBlocked: req.isBlocked,
+      blockedByMe: req.blockedByMe,
+    });
 });
 
 export const sendMessageto = asyncHandler(async (req, res) => {
@@ -41,7 +57,7 @@ export const sendMessageto = asyncHandler(async (req, res) => {
     throw new AppError("please provide details", 400);
 
   const msg_id = await sendMessage(cnv_id, snd_id, msg, msg_type);
- 
+
   if (!msg_id) throw new AppError("error while inserting message", 400);
   const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
 
@@ -56,10 +72,9 @@ export const sendMessageto = asyncHandler(async (req, res) => {
     message_type: msg_type,
     created_at: new Date(),
   });
-  io.emit('newMessage',{
-     conversation_id: cnv_id,
-  })
-  console.log("hey i gets executed")
+  io.emit("newMessage", {
+    conversation_id: cnv_id,
+  });
   return res.status(200).json({ message: "Message Sent Successfully" });
 });
 
@@ -115,17 +130,38 @@ export const updateGroupInfo = asyncHandler(async (req, res) => {
     .json({ success: true, message: "group updated successfully" });
 });
 
-export const getGroupMem = asyncHandler(async(req,res)=>{
-  const {id} = req.params;
-  if(!id)  throw new AppError("please provide group id", 400);
+export const getGroupMem = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!id) throw new AppError("please provide group id", 400);
   const result = await getGroupMembers(id);
-  res.status(200).json({success:true,result});
-})
+  res.status(200).json({ success: true, result });
+});
 
-export const clearChats = asyncHandler(async(req,res)=>{
+export const clearChats = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const {cnv_id} = req.body;
-  if(!cnv_id) throw new AppError("conversation_id is not defined",400);
-  const result = await clearChat(cnv_id,userId);
-  res.status(200).json({success:true,result})
-})
+  const { cnv_id } = req.body;
+  if (!cnv_id) throw new AppError("conversationId is not defined", 400);
+  const result = await clearChat(cnv_id, userId);
+  res.status(200).json({ success: true, result });
+});
+
+export const deleteTheMessage = asyncHandler(async (req, res) => {
+  const { msgId } = req.params;
+  await deleteMessageInfo(msgId);
+  await deleteMessage(msgId);
+  res
+    .status(200)
+    .json({ success: true, message: "Message Deleted Successfully" });
+});
+
+export const pinTheMessage = asyncHandler(async (req, res) => {
+  const { msgId, cnvId } = req.body;
+  if (!msgId || !cnvId) {
+    throw new AppError("conversationId and messageId is required", 400);
+  }
+  const output = await pinMessage(msgId, cnvId);
+  console.log(output);
+  res
+    .status(200)
+    .json({ success: true, message: `PinnedMessage is updated to ${msgId}` });
+});

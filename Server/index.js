@@ -41,7 +41,6 @@ io.on("connection", async (socket) => {
       "UPDATE message_status set status = 'delivered' where user_id = ? and status ='sent'",
       [userId],
     );
-  console.log("i am in login");
   const [showOthers] = await db
     .promise()
     .query(
@@ -75,7 +74,6 @@ io.on("connection", async (socket) => {
     const { conversationId } = data;
     console.log("Socket userId:", userId);
     console.log("Conversation:", conversationId);
-    console.log("hello");
 
     const [result] = await db.promise().query(
       `UPDATE message_status ms

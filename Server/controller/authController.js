@@ -23,12 +23,12 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
-    throw new appError("please provide ok ok credentials", 400);
+    throw new AppError("please provide ok ok credentials", 400);
   if (!emailRegex.test(email)) {
-    throw new appError("invalid email formate", 400);
+    throw new AppError("invalid email formate", 400);
   }
   if (password.length < 7) {
-    throw new appError("password must be 8 charachters long", 400);
+    throw new AppError("password must be 8 charachters long", 400);
   }
   const result = await CheckUser(email, password);
   if (result.error) throw new appError(result.error, 400);

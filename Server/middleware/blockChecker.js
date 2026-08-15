@@ -13,7 +13,6 @@ const blockChecker = (fieldId) => {
     const q1 =
       "select user_id from conversation_members where conversation_id = ? and user_id != ?";
     const [blckId] = await db.promise().query(q1, [cnv_id, blockedId]);
-    console.log(blckId[0].user_id, "hey i am blockerId here");
     const blockerId = blckId[0].user_id;
     const q = `select 1,blocker_id from user_blocks where (blocker_id = ? and blocked_id = ?) or (blocker_id = ? and blocked_id = ?)`;
     const [result] = await db
