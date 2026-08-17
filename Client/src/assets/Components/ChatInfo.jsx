@@ -55,8 +55,10 @@ const ChatInfo = (props) => {
         {isGroup && isAdmin && isPrivate && (
           <>
             <AddUserInGroup id={id} />
-
-            <div className="mx-4 mb-4">
+          </>
+        )}
+        {isGroup && (
+          <div className="mx-4 mb-4">
               <h2 className="text-sm font-semibold text-slate-700 mb-2">
                 Group members
               </h2>
@@ -105,7 +107,6 @@ const ChatInfo = (props) => {
                   ))}
               </div>
             </div>
-          </>
         )}
 
         {!isGroup && (

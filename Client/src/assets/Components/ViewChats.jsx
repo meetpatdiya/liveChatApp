@@ -4,7 +4,8 @@ import api from "../ApiServices/Api";
 import { io } from "socket.io-client";
 import UpdateGroup from "./UpdateGroup";
 import { useSocket } from "../Context/SocketContext";
-
+import chatBg from "./chatBg.svg";
+import { Copy, Trash2, Pin, X } from "lucide-react";
 const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
   const [chats, setchats] = useState([]);
@@ -12,13 +13,20 @@ const ViewChats = () => {
   const [isBlocked, setisBlocked] = useState(false);
   const [inpt, setinpt] = useState("");
   const [typing, setTyping] = useState(false);
+  const [pinned, setpinned] = useState("");
   const [typingUser, setTypingUser] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState({
+    id: null,
+    isSender: false,
+    text: "",
+  });
   const [file, setFile] = useState(null);
   const { id } = useParams();
   const userId = Number(localStorage.getItem("userId"));
   const socket = useSocket();
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const showInfo = location.pathname.endsWith("/info");
 
   useEffect(() => {
@@ -29,17 +37,18 @@ const ViewChats = () => {
     });
   }, [socket, id]);
 
- useEffect(() => {
+  useEffect(() => {
+    handleSelectMessage(null, null, null);
+
     if (!socket) return;
 
     socket.emit("joinConversation", id);
-}, [socket, id]);
+  }, [socket, id]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleTyping = (data) => {
-      console.log("hey he is typing");
       setTypingUser(data.senderId);
     };
 
@@ -68,6 +77,7 @@ const ViewChats = () => {
       setisBlocked(data.isBlocked);
       setgroupInfo(data?.grpinfo[0]);
       setUserInfo(data?.lsnSeen[0]);
+      setpinned(data?.pinnedMes.pin_mes);
     } catch (error) {
       console.log(error);
     }
@@ -83,7 +93,7 @@ const ViewChats = () => {
 
   useLayoutEffect(() => {
     messagesEndRef.current?.scrollIntoView();
-  }, [chats]);
+  }, [chats, typingUser]);
 
   const handleFile = async (e) => {
     const selectedFile = e.target.files[0];
@@ -212,6 +222,20 @@ const ViewChats = () => {
     }
   };
 
+  const handleSelectMessage = (isSender, msgId, Text) => {
+    setSelectedMessage({ id: msgId, isSender: isSender, text: Text });
+  };
+  const deleteMessage = async (e, msgId) => {
+    e.stopPropagation();
+    try {
+      const data = await api.delete(`/chat/message/${msgId}`);
+      console.log(data);
+      getMessages();
+      handleSelectMessage(null, null, null);
+    } catch (error) {
+      console.log(error);
+    }
+  };
   const handleInputChange = (e) => {
     if (!socket) return;
     setinpt(e.target.value);
@@ -231,7 +255,25 @@ const ViewChats = () => {
       });
 
       setTyping(false);
-    }, 5000);
+    }, 2000);
+  };
+
+  const handleCopyMessage = (e, Text) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(Text);
+    handleSelectMessage(null, null, null);
+  };
+
+  const handlePinMessage = async (e, msgId) => {
+    e.stopPropagation();
+    try {
+      const data = await api.patch("/chat/pin", { msgId: msgId, cnvId: id });
+      console.log(data);
+      getMessages();
+      handleSelectMessage(null, null, null);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -262,7 +304,58 @@ const ViewChats = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-1">
+          {selectedMessage.id && (
+            <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 border-b border-emerald-100">
+              <button
+                onClick={() =>
+                  setSelectedMessage({ id: null, isSender: false, text: "" })
+                }
+                className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-200/60 transition"
+                title="Cancel"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => handleCopyMessage(e, selectedMessage.text)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white transition"
+                  title="Copy"
+                >
+                  <Copy size={18} />
+                </button>
+                <button
+                  onClick={(e) => handlePinMessage(e, selectedMessage.id)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-600 hover:bg-white transition"
+                  title="Pin"
+                >
+                  <Pin size={18} />
+                </button>
+                {selectedMessage.isSender && (
+                  <button
+                    onClick={(e) => deleteMessage(e, selectedMessage.id)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 transition"
+                    title="Delete"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pinned && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
+              <Pin size={14} className="text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-800 truncate">{pinned}</p>
+            </div>
+          )}
+          <div
+            className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-1 bg-fixed bg-center"
+            style={{
+              backgroundImage: `url(${chatBg})`,
+            }}
+          >
             {chats.length > 0 &&
               chats.map((item, index) => {
                 const isSender = item.sender_id == userId;
@@ -289,15 +382,27 @@ const ViewChats = () => {
                         {Dats}
                       </div>
                     )}
+                    {selectedMessage.id === item.id && (
+                      <p className="flex">{["😂","❤️","👍","🔥","😢"].map((item,id)=>(
+                        <p key={item}>{item}</p>
+                      ))}</p>
+                    )}
                     <div
-                      className={`max-w-[65%] rounded-xl px-3 py-2 mb-1.5 shadow-sm ${
+                      onDoubleClick={() =>
+                        handleSelectMessage(isSender, item.id, item.message)
+                      }
+                      className={`max-w-[65%] rounded-xl px-3 py-2 mb-1.5 shadow-sm cursor-pointer transition ${
                         isSender
                           ? "self-end bg-emerald-100 text-slate-800"
                           : "self-start bg-white text-slate-800"
+                      } ${
+                        selectedMessage.id === item.id
+                          ? "ring-2 ring-emerald-500 ring-offset-1"
+                          : ""
                       }`}
                     >
                       {item.message_type == "text" ? (
-                        <p className="text-sm whitespace-pre-wrap wrap-break-word">
+                        <p className="text-m whitespace-pre-wrap wrap-break-word">
                           {item.message}
                         </p>
                       ) : item.message_type == "file" ? (
@@ -323,11 +428,19 @@ const ViewChats = () => {
                   </div>
                 );
               })}
+            {typingUser && (
+              <div className="flex flex-col mt-1 h-10">
+                <div className="self-start bg-white rounded-xl px-3 py-2.5 mb-1.5 shadow-sm inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" />
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-t border-slate-200">
-          {typingUser && <p className="text-9xl text-red-500">Typing...</p>}
             <label
               htmlFor="file-upload"
               className={`text-xl transition ${

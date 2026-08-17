@@ -80,13 +80,9 @@ useEffect(() => {
   console.log("Dashboard useEffect ran");
   console.log("socket:", socket?.id);
 
-  if (!socket) {
-    console.log("Socket is null");
-    return;
-  }
+  if (!socket) return;
 
   const handleMessage = () => {
-    console.log("Received newMessage");
     getYourGroups();
   };
 
@@ -217,7 +213,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Chat list */}
         <div className="flex-1 overflow-y-auto">
           {data === null && (
             <p className="text-center text-sm text-slate-400 mt-6">Loading chats...</p>
@@ -228,9 +223,14 @@ useEffect(() => {
           {data?.map((item, index) => (
             <div
               key={index}
-              onClick={() =>{ navigate(`/chatdashboard/${item.id}`);
-              setdata(prev=>prev.map(c=>c.id == item.id?{...c,unread_messages:0}:c))
-            }}
+              onClick={() => {
+                navigate(`/chatdashboard/${item.id}`);
+                setdata((prev) =>
+                  prev.map((c) =>
+                    c.id == item.id ? { ...c, unread_messages: 0 } : c
+                  )
+                );
+              }}
               className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 border-b border-slate-100 transition"
             >
               <img
@@ -238,8 +238,18 @@ useEffect(() => {
                 alt={item.display_name}
                 className="w-12 h-12 rounded-full object-cover shrink-0"
               />
-              <p className="font-medium text-slate-800 truncate">{item.display_name}</p>
-              <p>{item.unread_messages > 0 ? item.unread_messages:null}</p>
+
+              <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                <p className="font-medium text-slate-800 truncate">
+                  {item.display_name}
+                </p>
+
+                {item.unread_messages > 0 && (
+                  <span className="shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[11px] font-semibold flex items-center justify-center">
+                    {item.unread_messages > 99 ? "99+" : item.unread_messages}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
