@@ -70,6 +70,36 @@ io.on("connection", async (socket) => {
         senderId,
     });
   });
+  socket.on("addReaction", async ({ messageId, reaction }) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT conversation_id
+       FROM messages
+       WHERE id = ?`,
+      [messageId]
+    );
+
+    if (rows.length === 0) return;
+    const conversationId = rows[0].conversation_id;
+
+    await db.promise().query(
+      `INSERT INTO message_reactions
+        (message_id, user_id, reaction)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        reaction = VALUES(reaction)`,
+      [messageId, userId, reaction]
+    );
+    io.to(String(conversationId)).emit("reactionUpdated", {
+      messageId,
+      userId: Number(userId),
+      reaction
+    });
+
+  } catch (error) {
+    console.log("Reaction error:", error);
+  }
+});
   socket.on(`messagesRead`, async (data) => {
     const { conversationId } = data;
     console.log("Socket userId:", userId);

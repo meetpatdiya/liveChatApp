@@ -5,7 +5,16 @@ import { io } from "socket.io-client";
 import UpdateGroup from "./UpdateGroup";
 import { useSocket } from "../Context/SocketContext";
 import chatBg from "./chatBg.svg";
-import { Copy, Trash2, Pin, X } from "lucide-react";
+import {
+  Copy,
+  Trash2,
+  Pin,
+  X,
+  Search,
+  Smile,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
   const [chats, setchats] = useState([]);
@@ -15,6 +24,9 @@ const ViewChats = () => {
   const [typing, setTyping] = useState(false);
   const [pinned, setpinned] = useState("");
   const [typingUser, setTypingUser] = useState(null);
+  const [searchMess, setSeachMess] = useState("");
+  const [searchOutput, setsearchOutput] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState({
     id: null,
     isSender: false,
@@ -48,6 +60,22 @@ const ViewChats = () => {
   useEffect(() => {
     if (!socket) return;
 
+    const handleReactionUpdated = (data) => {
+      console.log("Reaction received:", data);
+      handleSelectMessage(null, null, null);
+      getMessages();
+    };
+
+    socket.on("reactionUpdated", handleReactionUpdated);
+
+    return () => {
+      socket.off("reactionUpdated", handleReactionUpdated);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
     const handleTyping = (data) => {
       setTypingUser(data.senderId);
     };
@@ -77,9 +105,32 @@ const ViewChats = () => {
       setisBlocked(data.isBlocked);
       setgroupInfo(data?.grpinfo[0]);
       setUserInfo(data?.lsnSeen[0]);
-      setpinned(data?.pinnedMes.pin_mes);
+      setpinned(data?.pinnedMes);
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const handleSearchMessage = (e) => {
+    e.stopPropagation();
+    const output = [];
+    for (const item of chats) {
+      if (item.message.toLowerCase().includes(searchMess)) {
+        console.log("Found:", item.message);
+        output.push({ message: item.message, id: item.id });
+      }
+    }
+    setsearchOutput(output);
+  };
+
+  const handleSeachRedirect = (Id) => {
+    const element = document.getElementById(`message-${Id}`);
+
+    if (element) {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   };
 
@@ -276,6 +327,18 @@ const ViewChats = () => {
     }
   };
 
+  const hanldeReaction = async (emoji, mesId) => {
+    try {
+      socket.emit("addReaction", {
+        messageId: mesId,
+        reaction: emoji,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+    setSelectedMessage({ id: null, isSender: false, text: "" });
+  };
+
   return (
     <>
       {!showInfo ? (
@@ -301,6 +364,69 @@ const ViewChats = () => {
                   : "Last seen: " +
                     new Date(userInfo?.last_seen).toLocaleString()}
               </p>
+            </div>
+            <div
+              className="ml-auto relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {!searchOpen ? (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition"
+                  title="Search messages"
+                >
+                  <Search size={18} />
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-slate-100 rounded-full pl-3 pr-1.5 py-1.5">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={searchMess}
+                    onChange={(e) => setSeachMess(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleSearchMessage(e)
+                    }
+                    placeholder="Search in chat"
+                    className="bg-transparent text-sm outline-none w-40 text-slate-800 placeholder:text-slate-400"
+                  />
+                  <button
+                    onClick={handleSearchMessage}
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition shrink-0"
+                    title="Search"
+                  >
+                    <Search size={14} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSeachMess("");
+                      setsearchOutput([]);
+                    }}
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 transition shrink-0"
+                    title="Close"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {searchOpen && searchOutput.length > 0 && (
+                <div className="absolute right-0 mt-2 w-72 max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 z-10">
+                  {searchOutput.map((mess, idx) => (
+                    <p
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSeachRedirect(mess.id);
+                      }}
+                      className="px-4 py-2.5 text-sm text-slate-700 truncate hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                    >
+                      {mess.message}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -344,10 +470,13 @@ const ViewChats = () => {
             </div>
           )}
 
-          {pinned && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
+          {pinned.pinMes && (
+            <div
+              onClick={() => handleSeachRedirect(pinned.pinId)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100"
+            >
               <Pin size={14} className="text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-800 truncate">{pinned}</p>
+              <p className="text-xs text-amber-800 truncate">{pinned.pinMes}</p>
             </div>
           )}
           <div
@@ -362,6 +491,11 @@ const ViewChats = () => {
                 const fileIndex = item.message.indexOf("/chatFiles/");
                 const fileName = item.message.substring(fileIndex + 11);
                 const Dats = new Date(item.created_at).toLocaleDateString();
+                const reactions = (
+                  typeof item.reactions === "string"
+                    ? JSON.parse(item.reactions)
+                    : item.reactions || []
+                ).filter(Boolean);
 
                 const previousDate =
                   index > 0
@@ -383,9 +517,23 @@ const ViewChats = () => {
                       </div>
                     )}
                     {selectedMessage.id === item.id && (
-                      <p className="flex">{["😂","❤️","👍","🔥","😢"].map((item,id)=>(
-                        <p key={item}>{item}</p>
-                      ))}</p>
+                      <div
+                        className={`flex mb-1.5 ${
+                          isSender ? "self-end" : "self-start"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 bg-white rounded-full shadow-md border border-slate-200 px-2 py-1.5">
+                          {["😂", "❤️", "👍", "🔥", "😢"].map((emj, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => hanldeReaction(emj, item.id)}
+                              className="text-lg hover:scale-125 transition-transform"
+                            >
+                              {emj}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     <div
                       onDoubleClick={() =>
@@ -402,7 +550,10 @@ const ViewChats = () => {
                       }`}
                     >
                       {item.message_type == "text" ? (
-                        <p className="text-m whitespace-pre-wrap wrap-break-word">
+                        <p
+                          className="text-m whitespace-pre-wrap wrap-break-word"
+                          id={`message-${item.id}`}
+                        >
                           {item.message}
                         </p>
                       ) : item.message_type == "file" ? (
@@ -421,9 +572,39 @@ const ViewChats = () => {
                           width={200}
                         />
                       )}
+                      <div className="flex justify-between">
                       <small className="block text-right text-[10px] text-slate-400 mt-1">
-                        {time} {isSender && item.status}
-                      </small>
+                        {time}{" "}
+                        </small>
+                        {isSender &&
+                          (item.status === "sent" ? (
+                            <Check size={14} className="text-slate-400 inline" />
+                          ) : item.status === "delivered" ? (
+                            <CheckCheck size={14} className="text-slate-400 inline" />
+                          ) : item.status === "read" ? (
+                            <CheckCheck size={14} className="text-sky-500 inline " />
+                          ) : null)}
+                          </div>
+                      {reactions.length > 0 && (
+                        <div
+                          className={`flex gap-1 -mt-1.5 px-2 ${
+                            isSender ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          {reactions.map((reaction, idx) => (
+                            <span
+                              key={idx}
+                              className={`rounded-full px-2 py-1 text-sm shadow-sm border ${
+                                isSender
+                                  ? "bg-emerald-100 border-emerald-200"
+                                  : "bg-white border-slate-200"
+                              }`}
+                            >
+                              {reaction.reaction}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

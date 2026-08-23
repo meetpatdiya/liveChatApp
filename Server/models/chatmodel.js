@@ -41,13 +41,41 @@ WHERE cm.user_id = ?`;
 };
 
 export const getMessages = async (id, userId) => {
-  const q = `select m.*,ms.user_id,ms.status,ms.seen_at from Messages m join
-    message_status ms on m.id = ms.message_id join conversation_members cm on cm.conversation_id = m.conversation_id 
-    where m.conversation_id = ? AND (
-        cm.cleared_at IS NULL
-        OR m.created_at > cm.cleared_at
-    )and cm.user_id = ? order
-     by m.created_at asc`;
+ const q = `
+SELECT
+    m.*,ms.user_id,ms.status,ms.seen_at,
+    COALESCE(
+        JSON_ARRAYAGG(
+            CASE
+                WHEN mr.user_id IS NOT NULL
+                THEN JSON_OBJECT(
+                    'user_id', mr.user_id,
+                    'reaction', mr.reaction
+                )
+            END
+        ),
+        JSON_ARRAY()
+    ) AS reactions
+FROM Messages m
+
+JOIN message_status ms
+    ON m.id = ms.message_id
+
+JOIN conversation_members cm
+    ON cm.conversation_id = m.conversation_id
+
+LEFT JOIN message_reactions mr
+    ON mr.message_id = m.id
+WHERE m.conversation_id = ?
+AND (
+    cm.cleared_at IS NULL
+    OR m.created_at > cm.cleared_at
+)
+AND cm.user_id = ?
+GROUP BY m.id
+ORDER BY m.created_at ASC
+
+`;
   const [data] = await db.promise().query(q, [id, userId]);
   return data;
 };
@@ -99,7 +127,7 @@ WHERE c.id = ?;`;
 };
 
 export const getPinnedMessage = async(cnvId)=>{
-  const q  = `select m.message as pin_mes from messages m join conversations c on c.id = m.conversation_id where c.id =? and m.id = c.pinned_message_id`
+  const q  = `select m.message as pinMes,m.id as pinId from messages m join conversations c on c.id = m.conversation_id where c.id =? and m.id = c.pinned_message_id`
   const [data]= await db.promise().query(q,[cnvId]);
   return data[0] || [];
 }

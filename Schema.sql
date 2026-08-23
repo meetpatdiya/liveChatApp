@@ -57,3 +57,13 @@ CREATE TABLE user_blocks (
     UNIQUE (`blocker_id`, `blocked_id`),
     CHECK (`blocker_id` <> `blocked_id`)
 );
+CREATE TABLE message_reactions (
+    `message_id` INT NOT NULL,
+    `user_id` INT NOT NULL,
+    `reaction` VARCHAR(20) NOT NULL,
+    
+    FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+
+    UNIQUE(`message_id`, `user_id`)
+);
