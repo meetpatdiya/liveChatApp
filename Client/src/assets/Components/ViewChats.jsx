@@ -27,6 +27,9 @@ const ViewChats = () => {
   const [searchMess, setSeachMess] = useState("");
   const [searchOutput, setsearchOutput] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [members, setmembers] = useState([]);
+  const [showMembers, setshowMembers] = useState(false);
+  const [mentionedMembers, setmentionedMembers] = useState([]);
   const [selectedMessage, setSelectedMessage] = useState({
     id: null,
     isSender: false,
@@ -61,7 +64,6 @@ const ViewChats = () => {
     if (!socket) return;
 
     const handleReactionUpdated = (data) => {
-      console.log("Reaction received:", data);
       handleSelectMessage(null, null, null);
       getMessages();
     };
@@ -92,6 +94,23 @@ const ViewChats = () => {
       socket.off("userStopTyping", handleStopTyping);
     };
   }, [socket]);
+  const getGroupMembers = async () => {
+    try {
+      const { data } = await api.get(`/chat/getgroupmembers/${id}`);
+      let mem = [];
+      data.result.map((item, id) => {
+        if (item.id != userId) {
+          mem.push({ name: item.name, id: item.id });
+        }
+      });
+      setmembers(mem);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    getGroupMembers();
+  }, [id]);
 
   const getMessages = async () => {
     try {
@@ -251,7 +270,7 @@ const ViewChats = () => {
     };
   }, [userInfo?.id]);
 
-  const handleSendMessage = async (message, msg_type) => {
+  const handleSendMessage = async (message, msg_type,mentioned_user) => {
     try {
       if (message.trim() !== "") {
         await api.post("/chat/sendmessage", {
@@ -259,6 +278,7 @@ const ViewChats = () => {
           snd_id: userId,
           msg: message,
           msg_type: msg_type,
+          mentioned_user:mentioned_user
         });
         setinpt("");
         getMessages();
@@ -290,6 +310,12 @@ const ViewChats = () => {
   const handleInputChange = (e) => {
     if (!socket) return;
     setinpt(e.target.value);
+    const temp = e.target.value;
+    if (temp.charAt(temp.length - 1) == "@") {
+      setshowMembers(true);
+    } else {
+      setshowMembers(false);
+    }
     if (!typing) {
       setTyping(true);
       socket.emit("typing", {
@@ -307,6 +333,12 @@ const ViewChats = () => {
 
       setTyping(false);
     }, 2000);
+  };
+
+  const handleMention = (mention) => {
+    setinpt(inpt + mention.name);
+    setmentionedMembers((m) => m + mention.id);
+    setshowMembers(false);
   };
 
   const handleCopyMessage = (e, Text) => {
@@ -573,18 +605,27 @@ const ViewChats = () => {
                         />
                       )}
                       <div className="flex justify-between">
-                      <small className="block text-right text-[10px] text-slate-400 mt-1">
-                        {time}{" "}
+                        <small className="block text-right text-[10px] text-slate-400 mt-1">
+                          {time}{" "}
                         </small>
                         {isSender &&
                           (item.status === "sent" ? (
-                            <Check size={14} className="text-slate-400 inline" />
+                            <Check
+                              size={14}
+                              className="text-slate-400 inline"
+                            />
                           ) : item.status === "delivered" ? (
-                            <CheckCheck size={14} className="text-slate-400 inline" />
+                            <CheckCheck
+                              size={14}
+                              className="text-slate-400 inline"
+                            />
                           ) : item.status === "read" ? (
-                            <CheckCheck size={14} className="text-sky-500 inline " />
+                            <CheckCheck
+                              size={14}
+                              className="text-sky-500 inline "
+                            />
                           ) : null)}
-                          </div>
+                      </div>
                       {reactions.length > 0 && (
                         <div
                           className={`flex gap-1 -mt-1.5 px-2 ${
@@ -651,13 +692,19 @@ const ViewChats = () => {
             />
             <button
               disabled={isBlocked}
-              onClick={() => handleSendMessage(inpt, "text")}
+              onClick={() => handleSendMessage(inpt, "text",mentionedMembers)}
               className="px-5 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition  disabled:bg-gray-400
              disabled:cursor-not-allowed
              disabled:opacity-50"
             >
               Send
             </button>
+          </div>
+          <div>
+            {showMembers &&
+              members?.map((m, idx) => (
+                <span onClick={() => handleMention(m)}>{m.name}</span>
+              ))}
           </div>
         </div>
       ) : (

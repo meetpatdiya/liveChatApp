@@ -12,6 +12,9 @@ import {
   deleteMessageInfo,
   getPinnedMessage,
   pinMessage,
+  insertMentions,
+  insertNotification,
+  getNotification
 } from "../models/chatmodel.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
@@ -52,7 +55,7 @@ export const getMessage = asyncHandler(async (req, res) => {
 });
 
 export const sendMessageto = asyncHandler(async (req, res) => {
-  const { cnv_id, snd_id, msg, msg_type } = req.body;
+  const { cnv_id, snd_id, msg, msg_type,mentioned_user } = req.body;
   if (!cnv_id || !snd_id || !msg || !msg_type)
     throw new AppError("please provide details", 400);
 
@@ -60,7 +63,10 @@ export const sendMessageto = asyncHandler(async (req, res) => {
 
   if (!msg_id) throw new AppError("error while inserting message", 400);
   const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
-
+  if(mentioned_user.length > 0){
+     await insertMentions(msg_id,mentioned_user)
+     await insertNotification(mentioned_user,snd_id,"mention",msg_id,cnv_id)
+  }
   if (!messInfo)
     throw new AppError("error while inserting int messaege status", 400);
   const io = req.app.get("io");
@@ -160,8 +166,17 @@ export const pinTheMessage = asyncHandler(async (req, res) => {
     throw new AppError("conversationId and messageId is required", 400);
   }
   const output = await pinMessage(msgId, cnvId);
-  console.log(output);
+
   res
     .status(200)
     .json({ success: true, message: `PinnedMessage is updated to ${msgId}` });
 });
+
+export const getNotify = asyncHandler(async(req,res)=>{
+  const {userId}= req.params;
+   if (!userId || userId.trim() == "") {
+    throw new AppError("UserId is required", 400);
+  }
+  const notifiations= await getNotification(userId);
+  res.status(200).json({success:true,data:notifiations})
+})

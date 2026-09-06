@@ -67,3 +67,24 @@ CREATE TABLE message_reactions (
 
     UNIQUE(`message_id`, `user_id`)
 );
+CREATE TABLE message_mentions(
+    `id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    `message_id` INT NOT NULL,
+    `mentioned_user_id` INT NOT NULL,
+    FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`mentioned_user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+)
+CREATE TABLE notification(
+    `id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    `user_id` INT NOT NULL,
+    `sender_id` INT NOT NULL,
+    `type` enum("mention","reaction"),
+    `message_id` INT,
+    `conversation_id` INT,
+    `is_read` BOOLEAN DEFAULT FALSE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`sender_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON DELETE CASCADE
+)

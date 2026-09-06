@@ -5,12 +5,15 @@ import CreateGroup from "./CreateGroup.jsx";
 import { io } from "socket.io-client";
 import { useSocket } from "../Context/SocketContext";
 import { useAuth } from "../Context/AuthContext";
+import Notification from "./Notification.jsx";
+import { Bell } from "lucide-react";
 
 const Dashboard = () => {
   const [data, setdata] = useState(null);
   const [search, setsearch] = useState("");
   const [output, setoutput] = useState({});
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showNotification, setshowNotification] = useState(false)
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
   const { setIsAuthenticated } = useAuth();
@@ -111,6 +114,12 @@ useEffect(() => {
               +
             </button>
             <button
+              onClick={() => setshowNotification((n) => !n)}
+              className="w-9 h-9 rounded-full bg-emerald-700/40 hover:bg-emerald-700/60 text-white flex items-center justify-center transition"
+              title="Notifications"
+            >
+              <Bell size={16} />
+            </button>            <button
               onClick={handleLogout}
               className="text-sm text-white/90 hover:text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700/40 transition"
             >
@@ -214,6 +223,7 @@ useEffect(() => {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {showNotification ? <Notification onClick={()=>setshowNotification((n)=>!n)}/>:<div>
           {data === null && (
             <p className="text-center text-sm text-slate-400 mt-6">Loading chats...</p>
           )}
@@ -241,7 +251,7 @@ useEffect(() => {
 
               <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                 <p className="font-medium text-slate-800 truncate">
-                  {item.display_name}
+                  {item.display_name} 
                 </p>
 
                 {item.unread_messages > 0 && (
@@ -252,6 +262,8 @@ useEffect(() => {
               </div>
             </div>
           ))}
+          </div>
+        }
         </div>
       </div>
 

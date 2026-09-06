@@ -20,6 +20,8 @@ import {
 } from "./models/socketManager.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import { globalLimiter } from "./middleware/Loginlimit.js";
+import { insertNotification } from "./models/chatmodel.js";
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -57,7 +59,7 @@ io.on("connection", async (socket) => {
   }
   socket.on("joinConversation", (conversationId) => {
     socket.join(String(conversationId));
-});
+  });
   socket.on("typing", ({ conversationId, senderId }) => {
     socket.to(String(conversationId)).emit("userTyping", {
       conversationId,
@@ -66,40 +68,54 @@ io.on("connection", async (socket) => {
   });
   socket.on("stopTyping", ({ conversationId, senderId }) => {
     socket.to(String(conversationId)).emit("userStopTyping", {
-        conversationId,
-        senderId,
+      conversationId,
+      senderId,
     });
   });
   socket.on("addReaction", async ({ messageId, reaction }) => {
-  try {
-    const [rows] = await db.promise().query(
-      `SELECT conversation_id
+    try {
+      const [rows] = await db.promise().query(
+        `SELECT conversation_id,sender_id
        FROM messages
        WHERE id = ?`,
-      [messageId]
-    );
+        [messageId],
+      );
 
-    if (rows.length === 0) return;
-    const conversationId = rows[0].conversation_id;
+      if (rows.length === 0) return;
+      const conversationId = rows[0].conversation_id;
+      const recvId = rows[0].sender_id;
 
-    await db.promise().query(
-      `INSERT INTO message_reactions
+      await db.promise().query(
+        `INSERT INTO message_reactions
         (message_id, user_id, reaction)
        VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE
         reaction = VALUES(reaction)`,
-      [messageId, userId, reaction]
-    );
-    io.to(String(conversationId)).emit("reactionUpdated", {
-      messageId,
-      userId: Number(userId),
-      reaction
-    });
-
-  } catch (error) {
-    console.log("Reaction error:", error);
-  }
-});
+        [messageId, userId, reaction],
+      );
+      await insertNotification(
+        recvId,
+        userId,
+        "reaction",
+        messageId,
+        conversationId,
+      );
+      io.to(String(conversationId)).emit("reactionUpdated", {
+        messageId,
+        userId: Number(userId),
+        reaction,
+      });
+      io.to(String(conversationId)).emit("newNotification", {
+        type: "reaction",
+        senderId: Number(userId),
+        messageId,
+        conversationId,
+        reaction,
+      });
+    } catch (error) {
+      console.log("Reaction error:", error);
+    }
+  });
   socket.on(`messagesRead`, async (data) => {
     const { conversationId } = data;
     console.log("Socket userId:", userId);

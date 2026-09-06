@@ -199,3 +199,21 @@ const q = "update conversations set pinned_message_id = ? where id = ?";
 const [output] = await db.promise().query(q,[msgId,cnvId]);
 return output;
 }
+
+export const insertMentions = async(messageId,mentionId)=>{
+  const q = "Insert into message_mentions(message_id,mentioned_user_id) values(?,?)"
+  const [output]= await db.promise().query(q,[messageId,mentionId]);
+  return output;
+}
+
+export const insertNotification =async(userId,sndId,type,mesId,cnvId)=>{
+  const q="Insert into notification(user_id,sender_id,type,message_id,conversation_id) values(?,?,?,?,?)";
+  const [output] = await db.promise().query(q,[userId,sndId,type,mesId,cnvId]);
+  return output;
+}
+
+export const getNotification = async(userId)=>{
+  const q = "Select n.id,n.sender_id,n.type,n.conversation_id,n.is_read,n.created_at,u.name from notification n join users u on n.sender_id = u.id where  user_id = ? and is_read=0 order by n.id desc ";
+  const [output] = await db.promise().query(q,[userId]);
+  return output;
+}
