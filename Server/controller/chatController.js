@@ -14,12 +14,12 @@ import {
   pinMessage,
   insertMentions,
   insertNotification,
-  getNotification
+  getNotification,
+  markAsReadNotification
 } from "../models/chatmodel.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
 import asyncHandler from "../middleware/asyncHandler.js";
-import { log } from "console";
 
 export const getGroups = asyncHandler(async (req, res) => {
   const id = req.user.id;
@@ -179,4 +179,39 @@ export const getNotify = asyncHandler(async(req,res)=>{
   }
   const notifiations= await getNotification(userId);
   res.status(200).json({success:true,data:notifiations})
+})
+
+export const markNotification = asyncHandler(async(req,res)=>{
+  const {Id} = req.params;
+   if (!Id || Id.trim() == "") {
+    throw new AppError("Id is required", 400);
+  }
+  const notifiations= await markAsReadNotification(Id);
+  if(!notifiations){
+    return new AppError("Error occured while making notification true",400)
+  }
+  res.status(200).json({success:true,data:notifiations})
+})
+
+export const voiceMessage = asyncHandler(async(req,res)=>{
+  const {cnvId,sndId} = req.body;
+   if (!sndId || !cnvId) {
+    throw new AppError("conversationId and senderId is required", 400);
+  }
+  if (!req.file) {
+    throw new AppError("Audio file is required", 400);
+  }
+
+  console.log(req.file);
+ const result = await cloudinary.uploader.upload(
+  req.file.path,
+  {
+    resource_type: "video",
+    folder: "chat/voice-messages"
+  }
+  );
+  const msgId=await sendMessage(cnvId,sndId,result.secure_url,"audio");
+  await insertMessInfo(msgId,"sent",cnvId,sndId)
+  res.status(200).json({success:true,data:"hey"})
+
 })

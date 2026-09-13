@@ -5,13 +5,14 @@ import { io } from "socket.io-client";
 import UpdateGroup from "./UpdateGroup";
 import { useSocket } from "../Context/SocketContext";
 import chatBg from "./chatBg.svg";
+import VoiceMessage from "./VoiceMessage.jsx";
 import {
   Copy,
   Trash2,
   Pin,
   X,
   Search,
-  Smile,
+  Paperclip,
   Check,
   CheckCheck,
 } from "lucide-react";
@@ -597,7 +598,10 @@ const ViewChats = () => {
                         >
                           {fileName}
                         </a>
-                      ) : (
+                      ) : item.message_type == "audio"? 
+                      (<audio src={item.message} controls/>)
+                      :
+                       (
                         <img
                           src={item.message}
                           className="rounded-lg max-w-full"
@@ -665,14 +669,13 @@ const ViewChats = () => {
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-t border-slate-200">
             <label
               htmlFor="file-upload"
-              className={`text-xl transition ${
+              className={`transition ${
                 isBlocked
                   ? "cursor-not-allowed opacity-50 text-slate-400"
                   : "cursor-pointer text-slate-500 hover:text-emerald-600"
               }`}
             >
-              {" "}
-              📎
+               <Paperclip size={20} />
             </label>
             <input
               id="file-upload"
@@ -682,6 +685,7 @@ const ViewChats = () => {
               onChange={handleFile}
               disabled={isBlocked}
             />
+              <VoiceMessage/>
             <input
               type="text"
               disabled={isBlocked}

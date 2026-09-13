@@ -33,6 +33,15 @@ const Notification = ({ onClick }) => {
       socket.off("newNotification", handleNewNotification);
     };
   }, [socket]);
+
+  const handleMarkAsRead = async(Id)=>{
+   try {
+      await api.post(`/chat/markasread/${Id}`);
+      getNotificationData();
+   } catch (error) {
+      console.log("error while marking read: ",error)
+   }
+  }
   return (
     <div className="h-full w-full flex flex-col bg-white">
       <div className="flex items-center justify-between px-4 border-b border-slate-200 bg-white">
@@ -111,6 +120,9 @@ const Notification = ({ onClick }) => {
                   ) : null}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">{timeAgo}</p>
+              </div>
+              <div>
+                <X onClick={()=>handleMarkAsRead(item.id)}></X>
               </div>
             </div>
           );

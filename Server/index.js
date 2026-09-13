@@ -93,13 +93,15 @@ io.on("connection", async (socket) => {
         reaction = VALUES(reaction)`,
         [messageId, userId, reaction],
       );
-      await insertNotification(
-        recvId,
-        userId,
-        "reaction",
-        messageId,
-        conversationId,
-      );
+      if(recvId != userId){
+        await insertNotification(
+          recvId,
+          userId,
+          "reaction",
+          messageId,
+          conversationId,
+        );
+      }
       io.to(String(conversationId)).emit("reactionUpdated", {
         messageId,
         userId: Number(userId),

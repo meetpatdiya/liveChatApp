@@ -217,3 +217,9 @@ export const getNotification = async(userId)=>{
   const [output] = await db.promise().query(q,[userId]);
   return output;
 }
+
+export const markAsReadNotification = async(Id)=>{
+  const q = "update notification set is_read=true where id=?";
+  const [output] = await db.promise().query(q,[Id]);
+  return true;
+}
