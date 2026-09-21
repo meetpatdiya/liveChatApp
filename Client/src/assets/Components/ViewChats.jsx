@@ -6,6 +6,7 @@ import UpdateGroup from "./UpdateGroup";
 import { useSocket } from "../Context/SocketContext";
 import chatBg from "./chatBg.svg";
 import VoiceMessage from "./VoiceMessage.jsx";
+import ImageOpener from "./ImageOpener.jsx";
 import {
   Copy,
   Trash2,
@@ -15,6 +16,9 @@ import {
   Paperclip,
   Check,
   CheckCheck,
+  FileText,
+  File as FileIcon,
+  FileSpreadsheet,
 } from "lucide-react";
 const ViewChats = () => {
   const [groupInfo, setgroupInfo] = useState({});
@@ -31,6 +35,7 @@ const ViewChats = () => {
   const [members, setmembers] = useState([]);
   const [showMembers, setshowMembers] = useState(false);
   const [mentionedMembers, setmentionedMembers] = useState([]);
+  const [imgOpener, setimgOpener] = useState({ isOpen: false, imgUrl: null });
   const [selectedMessage, setSelectedMessage] = useState({
     id: null,
     isSender: false,
@@ -154,6 +159,23 @@ const ViewChats = () => {
     }
   };
 
+  const getFileMeta = (fileName = "") => {
+    const ext = fileName.split(".").pop()?.toLowerCase();
+
+    if (ext === "pdf")
+      return { icon: FileText, color: "bg-red-500", label: "PDF" };
+    if (["doc", "docx"].includes(ext))
+      return { icon: FileText, color: "bg-blue-500", label: "Word" };
+    if (["xls", "xlsx", "csv"].includes(ext))
+      return { icon: FileSpreadsheet, color: "bg-green-600", label: "Sheet" };
+
+    return {
+      icon: FileIcon,
+      color: "bg-slate-500",
+      label: ext?.toUpperCase() || "File",
+    };
+  };
+
   const isGroup = groupInfo?.type == "group";
   const isAdmin = groupInfo?.created_by == userId;
   const isPrivate = groupInfo?.privacy == "private";
@@ -271,7 +293,7 @@ const ViewChats = () => {
     };
   }, [userInfo?.id]);
 
-  const handleSendMessage = async (message, msg_type,mentioned_user) => {
+  const handleSendMessage = async (message, msg_type, mentioned_user) => {
     try {
       if (message.trim() !== "") {
         await api.post("/chat/sendmessage", {
@@ -279,7 +301,7 @@ const ViewChats = () => {
           snd_id: userId,
           msg: message,
           msg_type: msg_type,
-          mentioned_user:mentioned_user
+          mentioned_user: mentioned_user,
         });
         setinpt("");
         getMessages();
@@ -590,22 +612,45 @@ const ViewChats = () => {
                           {item.message}
                         </p>
                       ) : item.message_type == "file" ? (
-                        <a
-                          href={item.message}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-emerald-700 underline break-all"
-                        >
-                          {fileName}
-                        </a>
-                      ) : item.message_type == "audio"? 
-                      (<audio src={item.message} controls/>)
-                      :
-                       (
+                        (() => {
+                          const {
+                            icon: Icon,
+                            color,
+                            label,
+                          } = getFileMeta(fileName);
+                          return (
+                            <a
+                              href={item.message}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-3 max-w-xs p-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 transition shadow-sm"
+                            >
+                              <div
+                                className={`flex items-center justify-center w-10 h-10 rounded-full ${color} shrink-0`}
+                              >
+                                <Icon size={20} className="text-white" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-800 truncate">
+                                  {fileName}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {label}
+                                </p>
+                              </div>
+                            </a>
+                          );
+                        })()
+                      ) : item.message_type == "audio" ? (
+                        <audio src={item.message} controls />
+                      ) : (
                         <img
                           src={item.message}
                           className="rounded-lg max-w-full"
                           width={200}
+                          onClick={() =>
+                            setimgOpener({ isOpen: true, imgUrl: item.message })
+                          }
                         />
                       )}
                       <div className="flex justify-between">
@@ -675,7 +720,7 @@ const ViewChats = () => {
                   : "cursor-pointer text-slate-500 hover:text-emerald-600"
               }`}
             >
-               <Paperclip size={20} />
+              <Paperclip size={20} />
             </label>
             <input
               id="file-upload"
@@ -685,7 +730,7 @@ const ViewChats = () => {
               onChange={handleFile}
               disabled={isBlocked}
             />
-              <VoiceMessage/>
+            <VoiceMessage />
             <input
               type="text"
               disabled={isBlocked}
@@ -696,7 +741,7 @@ const ViewChats = () => {
             />
             <button
               disabled={isBlocked}
-              onClick={() => handleSendMessage(inpt, "text",mentionedMembers)}
+              onClick={() => handleSendMessage(inpt, "text", mentionedMembers)}
               className="px-5 py-2.5 rounded-full bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition  disabled:bg-gray-400
              disabled:cursor-not-allowed
              disabled:opacity-50"
@@ -716,6 +761,12 @@ const ViewChats = () => {
           context={{ groupInfo, userInfo, isAdmin, isGroup, isPrivate }}
         />
       )}
+      {imgOpener.isOpen ? (
+        <ImageOpener
+          imgOpener={imgOpener}
+          onclick={() => setimgOpener({ isOpen: false, imgUrl: null })}
+        />
+      ) : null}
     </>
   );
 };
