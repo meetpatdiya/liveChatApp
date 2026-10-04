@@ -10,7 +10,6 @@ const AddProfilePicture = () => {
     setImage(e.target.files[0])
   };
   const handleProfileChange = async () => {
-    console.log(image)
     if (!image) {
       setImgError("Please choose a image");
       return;
@@ -24,6 +23,7 @@ const AddProfilePicture = () => {
         `/user/profile-picture/${userId}`,
         formData,
       );
+      console.log(data)
       if(data.success){
         setImage("")
       }
@@ -39,7 +39,7 @@ const AddProfilePicture = () => {
           <input type="file" accept="image/*" onChange={handleImage} />
           <p>{imgError}</p>
           <button onClick={handleProfileChange} className="border">
-            Change 
+            Change Not
           </button>
         </>
       )}

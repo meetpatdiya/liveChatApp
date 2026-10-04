@@ -15,7 +15,9 @@ import {
   insertMentions,
   insertNotification,
   getNotification,
-  markAsReadNotification
+  markAsReadNotification,
+  getSenderInfo,
+  updateUserAvatar
 } from "../models/chatmodel.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
@@ -34,13 +36,17 @@ export const getGroups = asyncHandler(async (req, res) => {
 export const getMessage = asyncHandler(async (req, res) => {
   const { id } = req.body;
   const userId = req.user.id;
-  if (!id) throw new AppError("user id is required", 400);
+  if (!id) throw new AppError("cnvId id is required", 400);
   const messages = await getMessages(id, userId);
   const grpinfo = await getGroupInfo(userId, id);
   const lsnSeen = await getLastSeen(id, userId);
   const pinnedMes = await getPinnedMessage(id);
+  let senderInfo= [];
   if (messages.length == 0) {
     return res.status(200).json({ messag: "start chatting", grpinfo });
+  }
+  if(grpinfo[0].type == "group"){
+    senderInfo = await getSenderInfo(id);
   }
   return res
     .status(200)
@@ -49,6 +55,7 @@ export const getMessage = asyncHandler(async (req, res) => {
       grpinfo,
       pinnedMes,
       lsnSeen,
+      senderInfo,
       isBlocked: req.isBlocked,
       blockedByMe: req.blockedByMe,
     });
@@ -88,7 +95,7 @@ export const sendImageto = asyncHandler(async (req, res) => {
   const { cnv_id, snd_id, msg_type } = req.body;
   if (!cnv_id || !snd_id || !msg_type || !req.file)
     throw new AppError("please provide details", 400);
-  const folderName = msg_type == "image" ? "chatImages" : "chatFiles";
+  const folderName = msg_type == "image" ? "chatapp/chat/images" : "chatapp/chat/documents";
   const result = await cloudinary.uploader.upload(req.file.path, {
     folder: folderName,
     resource_type: "auto",
@@ -122,7 +129,7 @@ export const updateGroupInfo = asyncHandler(async (req, res) => {
   }
 
   const result = await cloudinary.uploader.upload(req.file.path, {
-    folder: "profile_pictures",
+    folder: "chatapp/profile",
     resource_type: "auto",
     use_filename: true,
     filename_override: req.file.originalname,
@@ -202,16 +209,36 @@ export const voiceMessage = asyncHandler(async(req,res)=>{
     throw new AppError("Audio file is required", 400);
   }
 
-  console.log(req.file);
  const result = await cloudinary.uploader.upload(
   req.file.path,
   {
     resource_type: "video",
-    folder: "chat/voice-messages"
+    folder: "chatapp/chat/voice"
   }
   );
   const msgId=await sendMessage(cnvId,sndId,result.secure_url,"audio");
   await insertMessInfo(msgId,"sent",cnvId,sndId)
   res.status(200).json({success:true,data:"hey"})
 
+})
+
+export const updateUsersAvatar = asyncHandler(async(req,res)=>{
+  const {userId} = req.params;
+  if(!userId ){
+    throw new AppError("UserId is required", 400);
+  }
+  if(!req.file){
+    throw new AppError("Avatar is required",400)
+  }
+  const avatarUrl = await cloudinary.uploader.upload(
+    req.file.path,
+    {
+      folder: "chatapp/profile",
+      resource_type: "image",
+      use_filename: true,
+      filename_override: req.file.originalname,
+    }
+  )
+  const result = await updateUserAvatar(userId,avatarUrl.secure_url);
+  res.status(200).json({success:true,data:result})
 })

@@ -11,7 +11,7 @@ export const updateProfilePicture = asyncHandler(async (req, res) => {
   }
 
   const result = await cloudinary.uploader.upload(req.file.path, {
-    folder: "profile_pictures",
+    folder: "chatapp/profile",
   });
   fs.unlinkSync(req.file.path);
   await saveProfilePicture(id, result.secure_url);

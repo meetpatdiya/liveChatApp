@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import UpdateGroup from "./UpdateGroup";
 import AddUserInGroup from "./AddUserInGroup";
-import { useParams, useOutletContext,useNavigate } from "react-router-dom";
+import { useParams, useOutletContext, useNavigate } from "react-router-dom";
 import DirectChatInfo from "./DirectChatInfo";
 import api from "../ApiServices/Api";
 
@@ -22,7 +22,7 @@ const ChatInfo = (props) => {
         console.log(data);
       } catch (error) {
         console.log(error);
-      } finally{
+      } finally {
         setLoadingMembers(false)
       }
     };
@@ -38,9 +38,9 @@ const ChatInfo = (props) => {
   };
   return (
     <div className="h-full w-full flex flex-col bg-slate-50">
-       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
         <p className="text-sm font-semibold text-slate-800">
-          {  "Chat Info"}
+          {"Chat Info"}
         </p>
         <button
           onClick={() => navigate(-1)}
@@ -59,54 +59,53 @@ const ChatInfo = (props) => {
         )}
         {isGroup && (
           <div className="mx-4 mb-4">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">
-                Group members
-              </h2>
-              <div className="flex flex-col gap-2">
-                 {loadingMembers && (
-                  <p className="text-xs text-slate-400 text-center py-2">
-                    Loading members...
-                  </p>
-                )}
-                {!loadingMembers && grpUsers.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-2">
-                    No members found
-                  </p>
-                )}
-                {!loadingMembers&& grpUsers &&
-                  grpUsers.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200"
-                    >
-                      <img
-                        src={item.avatar}
-                        alt={item.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-slate-400 truncate">
-                          {item.email}
-                        </p>
-                      </div>
-                      <p
-                        className={`text-xs font-medium whitespace-nowrap ${
-                          item.is_online === 1
-                            ? "text-emerald-600"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {item.is_online === 1
-                          ? "Online"
-                          : new Date(item.last_seen).toLocaleString()}
+            <h2 className="text-sm font-semibold text-slate-700 mb-2">
+              Group members
+            </h2>
+            <div className="flex flex-col gap-2">
+              {loadingMembers && (
+                <p className="text-xs text-slate-400 text-center py-2">
+                  Loading members...
+                </p>
+              )}
+              {!loadingMembers && grpUsers.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-2">
+                  No members found
+                </p>
+              )}
+              {!loadingMembers && grpUsers &&
+                grpUsers.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200"
+                  >
+                    <img
+                      src={item.avatar}
+                      alt={item.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {item.email}
                       </p>
                     </div>
-                  ))}
-              </div>
+                    <p
+                      className={`text-xs font-medium whitespace-nowrap ${item.is_online === 1
+                          ? "text-emerald-600"
+                          : "text-slate-400"
+                        }`}
+                    >
+                      {item.is_online === 1
+                        ? "Online"
+                        : new Date(item.last_seen).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
             </div>
+          </div>
         )}
 
         {!isGroup && (

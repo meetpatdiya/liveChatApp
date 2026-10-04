@@ -1,5 +1,5 @@
 import express from "express"
-import { getGroups,getMessage,sendMessageto,sendImageto,updateGroupInfo,getGroupMem,clearChats,deleteTheMessage, pinTheMessage,getNotify,markNotification,voiceMessage } from "../controller/chatController.js";
+import { getGroups,getMessage,sendMessageto,sendImageto,updateGroupInfo,updateUsersAvatar,getGroupMem,clearChats,deleteTheMessage, pinTheMessage,getNotify,markNotification,voiceMessage } from "../controller/chatController.js";
 import blockChecker from "../middleware/blockChecker.js";
 import upload from "../config/multerConfig.js";
 const router = express.Router() 
@@ -9,6 +9,7 @@ router.post("/sendmessage",blockChecker("cnv_id"),sendMessageto)
 router.post("/clearchat",clearChats);
 router.get("/getgroupmembers/:id",getGroupMem)
 router.get("/notification/:userId",getNotify)
+router.patch("/updateavatar/:userId",upload.single("avatar"),updateUsersAvatar)
 router.delete("/message/:msgId",deleteTheMessage)
 router.patch("/pin",pinTheMessage);
 router.post("/sendimages",blockChecker,upload.single("imgchat"),sendImageto)

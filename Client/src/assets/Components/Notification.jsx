@@ -44,8 +44,8 @@ const Notification = ({ onClick }) => {
   }
   return (
     <div className="h-full w-full flex flex-col bg-white">
-      <div className="flex items-center justify-between px-4 border-b border-slate-200 bg-white">
-        <h2 className="text-black font-semibold text-lg flex items-center gap-2 ">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+        <h2 className="text-black font-semibold text-lg flex items-center gap-2">
           Notifications
         </h2>
         <button
@@ -122,7 +122,7 @@ const Notification = ({ onClick }) => {
                 <p className="text-xs text-slate-400 mt-0.5">{timeAgo}</p>
               </div>
               <div>
-                <X onClick={()=>handleMarkAsRead(item.id)}></X>
+                <X size={18} className="text-slate-400 hover:text-slate-600 cursor-pointer mt-0.5" onClick={()=>handleMarkAsRead(item.id)} />
               </div>
             </div>
           );

@@ -223,3 +223,15 @@ export const markAsReadNotification = async(Id)=>{
   const [output] = await db.promise().query(q,[Id]);
   return true;
 }
+
+export const getSenderInfo= async(cnvId)=>{
+const q = "select distinct m.sender_id,u.name,u.avatar from messages m join users u on u.id = m.sender_id where m.conversation_id = ?";
+const [output] = await db.promise().query(q,[cnvId]);
+return output;
+}
+
+export const updateUserAvatar = async(userId,avatarUrl)=>{
+  const q = "update users set avatar = ? where id = ?";
+  const [output] = await db.promise().query(q,[avatarUrl,userId]);
+  return output;
+}

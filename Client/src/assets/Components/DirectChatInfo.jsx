@@ -6,7 +6,7 @@ const DirectChatInfo = (props) => {
   const id = useParams();
   const userData = props.data;
 
-  const handleBlockUser = async (req, res) => {
+  const handleBlockUser = async () => {
     try {
       const { data } = await api.post("/block", { cnv_id: id.id });
       console.log(data);

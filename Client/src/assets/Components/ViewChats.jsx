@@ -8,6 +8,7 @@ import chatBg from "./chatBg.svg";
 import VoiceMessage from "./VoiceMessage.jsx";
 import ImageOpener from "./ImageOpener.jsx";
 import {
+  ChevronLeft,
   Copy,
   Trash2,
   Pin,
@@ -27,6 +28,7 @@ const ViewChats = () => {
   const [isBlocked, setisBlocked] = useState(false);
   const [inpt, setinpt] = useState("");
   const [typing, setTyping] = useState(false);
+  const [senderInfo, setSenderInfo] = useState([])
   const [pinned, setpinned] = useState("");
   const [typingUser, setTypingUser] = useState(null);
   const [searchMess, setSeachMess] = useState("");
@@ -131,6 +133,7 @@ const ViewChats = () => {
       setgroupInfo(data?.grpinfo[0]);
       setUserInfo(data?.lsnSeen[0]);
       setpinned(data?.pinnedMes);
+      setSenderInfo(data?.senderInfo)
     } catch (error) {
       console.log(error);
     }
@@ -400,8 +403,14 @@ const ViewChats = () => {
         <div className="flex flex-col h-full">
           <div
             onClick={() => navigate("info")}
-            className="flex items-center gap-3 px-5 py-3 bg-white border-b border-slate-200"
+            className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 bg-white border-b border-slate-200 cursor-pointer"
           >
+            <button 
+              onClick={(e) => { e.stopPropagation(); navigate("/chatdashboard"); }} 
+              className="md:hidden w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center shrink-0 -ml-1 text-slate-600 transition"
+            >
+              <ChevronLeft size={20} />
+            </button>
             <img
               src={groupInfo?.group_avatar}
               alt=""
@@ -558,6 +567,12 @@ const ViewChats = () => {
                     : null;
 
                 const showDateBadge = Dats !== previousDate;
+                const senderAvatar = senderInfo.find(
+                  (info) => item.sender_id == info.sender_id
+                )?.avatar;
+                const senderName = senderInfo.find(
+                  (info) => item.sender_id == info.sender_id
+                )?.name;
 
                 const time = new Date(item.created_at).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -590,11 +605,12 @@ const ViewChats = () => {
                         </div>
                       </div>
                     )}
+                    {!isSender && isGroup && <div className="flex items-center gap-2"><img src={senderAvatar} alt="" className="h-8 w-8 inline rounded-full object-cover"/><span>{senderName}</span></div>}
                     <div
                       onDoubleClick={() =>
                         handleSelectMessage(isSender, item.id, item.message)
                       }
-                      className={`max-w-[65%] rounded-xl px-3 py-2 mb-1.5 shadow-sm cursor-pointer transition ${
+                      className={`max-w-[85%] md:max-w-[65%] rounded-xl px-3 py-2 mb-1.5 shadow-sm cursor-pointer transition ${
                         isSender
                           ? "self-end bg-emerald-100 text-slate-800"
                           : "self-start bg-white text-slate-800"
@@ -711,7 +727,7 @@ const ViewChats = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-3 bg-white border-t border-slate-200">
+          <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-3 bg-white border-t border-slate-200">
             <label
               htmlFor="file-upload"
               className={`transition ${

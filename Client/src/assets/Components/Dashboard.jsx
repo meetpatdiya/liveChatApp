@@ -1,12 +1,13 @@
 import React, { useState, useEffect, Suspense } from "react";
 import api from "../ApiServices/Api.js";
-import { useNavigate, Outlet } from "react-router-dom";
+import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import CreateGroup from "./CreateGroup.jsx";
 import { io } from "socket.io-client";
 import { useSocket } from "../Context/SocketContext";
 import { useAuth } from "../Context/AuthContext";
 import Notification from "./Notification.jsx";
 import { Bell } from "lucide-react";
+import AddProfilePicture from "./AddProfilePicture.jsx"
 
 const Dashboard = () => {
   const [data, setdata] = useState(null);
@@ -15,6 +16,8 @@ const Dashboard = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showNotification, setshowNotification] = useState(false)
   const navigate = useNavigate();
+  const location = useLocation();
+  const isIndex = location.pathname === "/chatdashboard" || location.pathname === "/chatdashboard/";
   const userId = localStorage.getItem("userId");
   const { setIsAuthenticated } = useAuth();
   const socket = useSocket();
@@ -101,8 +104,8 @@ useEffect(() => {
     (!output.searchResult2 || output.searchResult2.length === 0);
 
   return (
-    <div className="h-screen flex bg-white">
-      <div className="w-full md:w-95 shrink-0 border-r border-slate-200 flex flex-col">
+    <div className="h-screen flex bg-white w-full">
+      <div className={`w-full md:w-95 shrink-0 border-r border-slate-200 flex-col ${isIndex ? 'flex' : 'hidden md:flex'}`}>
         <div className="flex items-center justify-between px-4 py-4 bg-emerald-600">
           <h1 className="text-white font-semibold text-lg">TalkNest</h1>
           <div className="flex items-center gap-2">
@@ -127,6 +130,7 @@ useEffect(() => {
             </button>
           </div>
         </div>
+            <AddProfilePicture/>
 
         {showCreateGroup && (
           <div className="border-b border-slate-200 bg-slate-50 p-4">
@@ -267,7 +271,7 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="hidden md:flex flex-1 flex-col bg-[#f0f2f5]">
+      <div className={`flex-1 flex-col bg-[#f0f2f5] w-full ${!isIndex ? 'flex' : 'hidden md:flex'}`}>
         <Suspense
           fallback={<p className="m-auto text-slate-400 text-sm">Loading</p>}
         >

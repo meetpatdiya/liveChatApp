@@ -51,7 +51,7 @@ const Login = () => {
   };
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center px-6 py-12">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg shadow-emerald-600/10 border border-emerald-100 p-8">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg shadow-emerald-600/10 border border-emerald-100 p-6 md:p-8">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-8 text-center">
           Login
         </h1>
