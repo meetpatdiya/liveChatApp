@@ -3,7 +3,6 @@ import http from "http";
 import db from "./config/db.js";
 import { Server } from "socket.io";
 import express from "express";
-import { rateLimit } from "express-rate-limit";
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
@@ -12,6 +11,8 @@ import userRoutes from "./routes/userRoutes.js";
 import blockRoutes from "./routes/blockRoutes.js";
 import cookieParser from "cookie-parser";
 import isauth from "./middleware/isauth.js";
+import { initNotificationWorker } from "./others/notificationWorker.js";
+import notificationQueue from "./others/notificationQueue.js";
 import {
   addUser,
   removeUser,
@@ -31,12 +32,12 @@ const io = new Server(server, {
   },
 });
 app.set("io", io);
+initNotificationWorker(io);
 io.on("connection", async (socket) => {
   const userId = socket.handshake.auth.userId;
-  addUser(Number(userId), socket.id);
-  const data = await db
-    .promise()
-    .query("UPDATE users SET is_online = 1 WHERE id = ?", [userId]);
+  if (userId) {
+    await addUser(Number(userId), socket.id);
+  }
   await db
     .promise()
     .query(
@@ -50,7 +51,7 @@ io.on("connection", async (socket) => {
       [userId],
     );
   for (const user of showOthers) {
-    const senderSocket = getSocketId(user.sender_id);
+    const senderSocket = await getSocketId(user.sender_id);
     if (senderSocket) {
       io.to(senderSocket).emit("messagesDelivered", {
         receiverId: Number(userId),
@@ -93,25 +94,18 @@ io.on("connection", async (socket) => {
         reaction = VALUES(reaction)`,
         [messageId, userId, reaction],
       );
-      if(recvId != userId){
-        await insertNotification(
-          recvId,
-          userId,
-          "reaction",
+      if (recvId != userId) {
+        await notificationQueue.add("createNotification", {
+          receiverId: recvId,
+          senderId: Number(userId),
+          type: "reaction",
           messageId,
           conversationId,
-        );
+        });
       }
       io.to(String(conversationId)).emit("reactionUpdated", {
         messageId,
         userId: Number(userId),
-        reaction,
-      });
-      io.to(String(conversationId)).emit("newNotification", {
-        type: "reaction",
-        senderId: Number(userId),
-        messageId,
-        conversationId,
         reaction,
       });
     } catch (error) {
@@ -138,17 +132,19 @@ io.on("connection", async (socket) => {
   io.emit("userOnline", userId);
   socket.on("disconnect", async () => {
     console.log("hello bhai i am disconnecting");
-    await db
-      .promise()
-      .query(
-        "UPDATE users SET is_online = false, last_seen = NOW() WHERE id = ?",
-        [userId],
-      );
-    removeUser(socket.id);
-    io.emit("userOffline", {
-      userId,
-      lastSeen: new Date(),
-    });
+    if (userId) {
+      await removeUser(Number(userId));
+      await db
+        .promise()
+        .query(
+          "UPDATE users SET last_seen = NOW() WHERE id = ?",
+          [userId],
+        );
+      io.emit("userOffline", {
+        userId,
+        lastSeen: new Date(),
+      });
+    }
   });
 });
 app.use(express.json());

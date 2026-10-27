@@ -22,6 +22,7 @@ import {
 import cloudinary from "../config/cloudinaryConfig.js";
 import AppError from "../middleware/appError.js";
 import asyncHandler from "../middleware/asyncHandler.js";
+import notificationQueue from "../others/notificationQueue.js";
 
 export const getGroups = asyncHandler(async (req, res) => {
   const id = req.user.id;
@@ -41,11 +42,11 @@ export const getMessage = asyncHandler(async (req, res) => {
   const grpinfo = await getGroupInfo(userId, id);
   const lsnSeen = await getLastSeen(id, userId);
   const pinnedMes = await getPinnedMessage(id);
-  let senderInfo= [];
+  let senderInfo = [];
   if (messages.length == 0) {
     return res.status(200).json({ messag: "start chatting", grpinfo });
   }
-  if(grpinfo[0].type == "group"){
+  if (grpinfo[0].type == "group") {
     senderInfo = await getSenderInfo(id);
   }
   return res
@@ -62,7 +63,7 @@ export const getMessage = asyncHandler(async (req, res) => {
 });
 
 export const sendMessageto = asyncHandler(async (req, res) => {
-  const { cnv_id, snd_id, msg, msg_type,mentioned_user } = req.body;
+  const { cnv_id, snd_id, msg, msg_type, mentioned_user } = req.body;
   if (!cnv_id || !snd_id || !msg || !msg_type)
     throw new AppError("please provide details", 400);
 
@@ -70,12 +71,29 @@ export const sendMessageto = asyncHandler(async (req, res) => {
 
   if (!msg_id) throw new AppError("error while inserting message", 400);
   const messInfo = await insertMessInfo(msg_id, "sent", cnv_id, snd_id);
-  if(mentioned_user.length > 0){
-     await insertMentions(msg_id,mentioned_user)
-     await insertNotification(mentioned_user,snd_id,"mention",msg_id,cnv_id)
+  if (Array.isArray(mentioned_user) && mentioned_user.length > 0) {
+    for (const uid of mentioned_user) {
+      await insertMentions(msg_id, uid);
+      await notificationQueue.add("createNotification", {
+        receiverId: uid,
+        senderId: snd_id,
+        type: "mention",
+        messageId: msg_id,
+        conversationId: cnv_id,
+      });
+    }
+  } else if (mentioned_user.length > 0 ) {
+    await insertMentions(msg_id, mentioned_user);
+    await notificationQueue.add("createNotification", {
+      receiverId: mentioned_user,
+      senderId: snd_id,
+      type: "mention",
+      messageId: msg_id,
+      conversationId: cnv_id,
+    });
   }
   if (!messInfo)
-    throw new AppError("error while inserting int messaege status", 400);
+    throw new AppError("error while inserting into message status", 400);
   const io = req.app.get("io");
 
   io.emit(`newMessage_${cnv_id}`, {
@@ -179,56 +197,56 @@ export const pinTheMessage = asyncHandler(async (req, res) => {
     .json({ success: true, message: `PinnedMessage is updated to ${msgId}` });
 });
 
-export const getNotify = asyncHandler(async(req,res)=>{
-  const {userId}= req.params;
-   if (!userId || userId.trim() == "") {
+export const getNotify = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  if (!userId || userId.trim() == "") {
     throw new AppError("UserId is required", 400);
   }
-  const notifiations= await getNotification(userId);
-  res.status(200).json({success:true,data:notifiations})
+  const notifiations = await getNotification(userId);
+  res.status(200).json({ success: true, data: notifiations })
 })
 
-export const markNotification = asyncHandler(async(req,res)=>{
-  const {Id} = req.params;
-   if (!Id || Id.trim() == "") {
+export const markNotification = asyncHandler(async (req, res) => {
+  const { Id } = req.params;
+  if (!Id || Id.trim() == "") {
     throw new AppError("Id is required", 400);
   }
-  const notifiations= await markAsReadNotification(Id);
-  if(!notifiations){
-    return new AppError("Error occured while making notification true",400)
+  const notifiations = await markAsReadNotification(Id);
+  if (!notifiations) {
+    return new AppError("Error occured while making notification true", 400)
   }
-  res.status(200).json({success:true,data:notifiations})
+  res.status(200).json({ success: true, data: notifiations })
 })
 
-export const voiceMessage = asyncHandler(async(req,res)=>{
-  const {cnvId,sndId} = req.body;
-   if (!sndId || !cnvId) {
+export const voiceMessage = asyncHandler(async (req, res) => {
+  const { cnvId, sndId } = req.body;
+  if (!sndId || !cnvId) {
     throw new AppError("conversationId and senderId is required", 400);
   }
   if (!req.file) {
     throw new AppError("Audio file is required", 400);
   }
 
- const result = await cloudinary.uploader.upload(
-  req.file.path,
-  {
-    resource_type: "video",
-    folder: "chatapp/chat/voice"
-  }
+  const result = await cloudinary.uploader.upload(
+    req.file.path,
+    {
+      resource_type: "video",
+      folder: "chatapp/chat/voice"
+    }
   );
-  const msgId=await sendMessage(cnvId,sndId,result.secure_url,"audio");
-  await insertMessInfo(msgId,"sent",cnvId,sndId)
-  res.status(200).json({success:true,data:"hey"})
+  const msgId = await sendMessage(cnvId, sndId, result.secure_url, "audio");
+  await insertMessInfo(msgId, "sent", cnvId, sndId)
+  res.status(200).json({ success: true, data: "hey" })
 
 })
 
-export const updateUsersAvatar = asyncHandler(async(req,res)=>{
-  const {userId} = req.params;
-  if(!userId ){
+export const updateUsersAvatar = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
     throw new AppError("UserId is required", 400);
   }
-  if(!req.file){
-    throw new AppError("Avatar is required",400)
+  if (!req.file) {
+    throw new AppError("Avatar is required", 400)
   }
   const avatarUrl = await cloudinary.uploader.upload(
     req.file.path,
@@ -239,6 +257,6 @@ export const updateUsersAvatar = asyncHandler(async(req,res)=>{
       filename_override: req.file.originalname,
     }
   )
-  const result = await updateUserAvatar(userId,avatarUrl.secure_url);
-  res.status(200).json({success:true,data:result})
+  const result = await updateUserAvatar(userId, avatarUrl.secure_url);
+  res.status(200).json({ success: true, data: result })
 })

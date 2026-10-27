@@ -31,7 +31,7 @@ export const login = asyncHandler(async (req, res) => {
     throw new AppError("password must be 8 charachters long", 400);
   }
   const result = await CheckUser(email, password);
-  if (result.error) throw new appError(result.error, 400);
+  if (result.error) throw new AppError(result.error, 400);
 
   res.cookie("accessToken", result.accessToken, {
     httpOnly: true,

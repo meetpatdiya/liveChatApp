@@ -1,5 +1,5 @@
 import db from "../config/db.js";
-import { getSocketId } from "./socketManager.js";
+import { isUserOnline } from "./socketManager.js";
 
 export const getGroupName = async (id) => {
   const q = `SELECT
@@ -83,14 +83,19 @@ ORDER BY m.created_at ASC
 export const getLastSeen = async (id, userId) => {
   const q = `SELECT 
     u.id,
-    u.is_online,
     u.last_seen
 FROM conversation_members cm
 INNER JOIN users u 
     ON cm.user_id = u.id
 WHERE cm.conversation_id = ? and u.id != ?`;
   const [data] = await db.promise().query(q, [id, userId]);
-  return data;
+  const enriched = await Promise.all(
+    data.map(async (u) => ({
+      ...u,
+      is_online: (await isUserOnline(u.id)) ? 1 : 0,
+    }))
+  );
+  return enriched;
 };
 
 export const getGroupInfo = async (userId, id) => {
@@ -147,7 +152,8 @@ export const insertMessInfo = async (msg_id, status, cnv_id, snd_id) => {
   WHERE conversation_id = ? and user_id != ?`;
     const [members] = await db.promise().query(q1, [cnv_id, snd_id]);
     for (const m of members) {
-      const updatedStatus = getSocketId(m.user_id) ? "delivered" : "sent";
+      const isOnline = await isUserOnline(m.user_id);
+      const updatedStatus = isOnline ? "delivered" : "sent";
       await db.promise().query(
         `INSERT INTO message_status(message_id,user_id,status)
        VALUES(?,?,?)`,
@@ -170,9 +176,15 @@ export const updateGroup = async (grp_id, grp_avatar, grp_name) => {
 
 export const getGroupMembers = async (cnv_id) => {
   const q =
-    "select u.id,u.name,u.email,u.avatar,u.is_online,u.last_seen from users u join conversation_members cm on u.id = cm.user_id where cm.conversation_id = ?;";
+    "select u.id,u.name,u.email,u.avatar,u.last_seen from users u join conversation_members cm on u.id = cm.user_id where cm.conversation_id = ?;";
   const [groupUsers] = await db.promise().query(q, [cnv_id]);
-  return groupUsers;
+  const enriched = await Promise.all(
+    groupUsers.map(async (u) => ({
+      ...u,
+      is_online: (await isUserOnline(u.id)) ? 1 : 0,
+    }))
+  );
+  return enriched;
 };
 
 export const clearChat = async (cnv_id, userId) => {

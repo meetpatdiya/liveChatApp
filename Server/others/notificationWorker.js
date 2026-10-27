@@ -1,37 +1,61 @@
 import { Worker } from "bullmq";
 import redisConnection from "../config/redis.js";
 import db from "../config/db.js";
+import { getSocketId } from "../models/socketManager.js";
 
-const notificationWorker = new Worker(
-  "notificationQueue",
-  async (job) => {
-    const { messageId, senderId, receiverId, conversationId } = job.data;
+export const initNotificationWorker = (io) => {
 
-    if (job.name === "createNotification") {
-      console.log("Processing notification:", job.id);
+  const notificationWorker = new Worker(
+    "notificationQueue",
+    async (job) => {
+      const { messageId, senderId, receiverId, conversationId, type="reaction" } = job.data;
 
-      await db.promise().query(
-        `INSERT INTO notification
+      if (job.name === "createNotification") {
+        console.log("Processing notification:", job.id);
+
+        await db.promise().query(
+          `INSERT INTO notification
           (user_id,sender_id,type,message_id,conversation_id)
          VALUES (?, ?, ?, ?, ?)`,
-        [receiverId, senderId, "reaction", messageId, conversationId]
-      );
+          [receiverId, senderId, type, messageId, conversationId]
+        );
 
-      console.log("Notification created successfully");
+        console.log("Notification created successfully");
+
+        if (io) {
+          const payload = {
+            type,
+            senderId,
+            receiverId,
+            messageId,
+            conversationId,
+          };
+
+          // 1. Send directly to receiver if they are online anywhere in the app
+          const receiverSocketId = await getSocketId(Number(receiverId));
+          if (receiverSocketId) {
+            io.to(receiverSocketId).emit("newNotification", payload);
+          }
+
+          // 2. Also emit to conversation room if active
+          if (conversationId) {
+            io.to(String(conversationId)).emit("newNotification", payload);
+          }
+        }
+      }
+    },
+    {
+      connection: redisConnection,
+      concurrency: 5,
     }
-  },
-  {
-    connection: redisConnection,
-    concurrency: 5,
-  }
-);
+  );
 
-notificationWorker.on("completed", (job) => {
-  console.log(`Job ${job.id} completed`);
-});
+  notificationWorker.on("completed", (job) => {
+    console.log(`Job ${job.id} completed`);
+  });
 
-notificationWorker.on("failed", (job, error) => {
-  console.error(`Job ${job?.id} failed:`, error.message);
-});
-
-export default notificationWorker;
+  notificationWorker.on("failed", (job, error) => {
+    console.error(`Job ${job?.id} failed:`, error.message);
+  });
+  return notificationWorker;
+}
