@@ -7,7 +7,7 @@ const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
-    throw new AppError("please provide ok ok credentials", 400);
+    throw new AppError("please provide valid credentials", 400);
   }
   if (!emailRegex.test(email)) {
     throw new AppError("invalid email formate", 400);

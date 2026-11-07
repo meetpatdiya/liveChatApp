@@ -168,11 +168,10 @@ app.use("/create", isauth, createRoutes);
 app.use("/user", isauth, userRoutes);
 app.use("/block", isauth, blockRoutes);
 app.use(errorMiddleware);
-server.listen(3000, () => {
-  console.log("Server Running");
-});
+
 process.on("SIGINT", async () => {
   console.log("Closing MySQL pool...");
   await db.end();
   process.exit(0);
 });
+export default server;
