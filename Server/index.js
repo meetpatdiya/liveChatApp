@@ -1,6 +1,7 @@
 import cors from "cors";
 import http from "http";
 import db from "./config/db.js";
+import redisConnection from "./config/redis.js";
 import { Server } from "socket.io";
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
@@ -149,7 +150,6 @@ io.on("connection", async (socket) => {
 });
 app.use(express.json());
 app.use(cookieParser());
-app.use(globalLimiter);
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -158,6 +158,35 @@ app.use(
     allowedHeaders: ["Authorization", "Content-Type"],
   }),
 );
+app.get("/health", async (req, res) => {
+  const status = {
+    status: "ok",
+    database: "down",
+    redis: "down",
+    uptime: process.uptime(),
+  };
+
+  try {
+    await db.promise().query("SELECT 1");
+    status.database = "up";
+  } catch {
+    status.status = "error";
+  }
+
+  try {
+    const pong = await redisConnection.ping();
+    if (pong === "PONG") {
+      status.redis = "up";
+    } else {
+      status.status = "error";
+    }
+  } catch {
+    status.status = "error";
+  }
+
+  return res.status(status.status === "ok" ? 200 : 503).json(status);
+});
+app.use(globalLimiter);
 app.get("/", isauth, (req, res) => {
   return res.status(200).json({ message: "hey" });
 });

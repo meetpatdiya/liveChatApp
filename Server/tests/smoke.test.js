@@ -25,8 +25,8 @@ describe("Smoke Tests - External Services & Environment", () => {
     const requiredEnvVars = [
       "MYSQLHOST",
       "MYSQLUSER",
-      "MYSQLDATABASE",
-      "MYSQLPASSWORD",
+      "MYSQL_DATABASE",
+      "MYSQL_PASSWORD",
       "ACCESS_SECRET",
       "REFRESH_SECRET",
       "CLOUDINARY_CLOUD_NAME",

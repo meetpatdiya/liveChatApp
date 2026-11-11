@@ -43,7 +43,10 @@ WHERE cm.user_id = ?`;
 export const getMessages = async (id, userId) => {
  const q = `
 SELECT
-    m.*,ms.user_id,ms.status,ms.seen_at,
+    m.*,
+    ANY_VALUE(ms.user_id) AS user_id,
+    ANY_VALUE(ms.status) AS status,
+    ANY_VALUE(ms.seen_at) AS seen_at,
     COALESCE(
         JSON_ARRAYAGG(
             CASE
@@ -56,7 +59,7 @@ SELECT
         ),
         JSON_ARRAY()
     ) AS reactions
-FROM Messages m
+FROM messages m
 
 JOIN message_status ms
     ON m.id = ms.message_id

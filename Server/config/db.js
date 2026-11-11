@@ -4,7 +4,7 @@ dotenv.config()
 const db =  mysql.createPool({
     host:process.env.MYSQLHOST,
     user:process.env.MYSQLUSER,
-    database:process.env.MYSQLDATABASE,
-    password:process.env.MYSQLPASSWORD,
+    database:process.env.MYSQL_DATABASE,
+    password:process.env.MYSQL_PASSWORD,
 })
 export default db
